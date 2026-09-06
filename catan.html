@@ -1,0 +1,2733 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Catan Digitale</title>
+<style>
+  :root{
+    --ink-900:#1B2430; --ink-800:#232E3D; --ink-700:#2D3B4E; --ink-600:#3A4A60; --ink-500:#4C5F79;
+    --parchment:#E8DCC0; --parchment-dim:#C9BC9C; --parchment-faint:#75705E;
+    --brass:#C9A227; --brass-bright:#E6BE4A; --brass-dim:#8A711F;
+    --compass-red:#B0483A; --compass-red-bright:#D1604F;
+    --res-legno:#3F6B4A; --res-legno-lt:#5C8C66;
+    --res-argilla:#A8583A; --res-argilla-lt:#C47752;
+    --res-lana:#A8AC5E; --res-lana-lt:#C3C77E;
+    --res-grano:#D4A537; --res-grano-lt:#E6C265;
+    --res-roccia:#737B87; --res-roccia-lt:#95A0AE;
+    --res-deserto:#D9C89A; --res-deserto-lt:#E8DCB8;
+    --p0:#C1443A; --p1:#3E72A8; --p2:#EDE6D6; --p3:#D68A34;
+    --font-display:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+    --font-body:"Avenir Next","Century Gothic",-apple-system,"Segoe UI",sans-serif;
+    --font-mono:"SF Mono","Cascadia Mono",Consolas,"Courier New",monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    background:radial-gradient(ellipse at 50% -10%, var(--ink-700), var(--ink-900) 60%);
+    color:var(--parchment); font-family:var(--font-body); overflow:hidden;
+  }
+  #app{height:100%; width:100%; position:relative;}
+  .screen{display:none; height:100%; width:100%;}
+  .screen.active{display:flex;}
+
+  /* ---------- decorative ---------- */
+  .compass{position:absolute; opacity:.14; pointer-events:none;}
+  .compass svg{width:100%; height:100%;}
+
+  /* ---------- start / config screens ---------- */
+  #screen-start, #screen-config{align-items:center; justify-content:center; flex-direction:column; padding:24px;}
+  .card{
+    background:linear-gradient(160deg, var(--ink-800), var(--ink-900));
+    border:1px solid var(--ink-600); border-radius:6px;
+    box-shadow:0 24px 60px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.03);
+    padding:36px 40px; max-width:480px; width:100%; position:relative; z-index:1;
+  }
+  .card::before{
+    content:""; position:absolute; inset:8px; border:1px solid rgba(201,162,39,.25); border-radius:3px; pointer-events:none;
+  }
+  h1.title{
+    font-family:var(--font-display); font-size:2.4rem; letter-spacing:.04em; margin:0 0 4px;
+    color:var(--parchment); text-align:center;
+  }
+  .subtitle{
+    font-family:var(--font-mono); font-size:.72rem; letter-spacing:.28em; text-transform:uppercase;
+    color:var(--brass); text-align:center; margin:0 0 28px;
+  }
+  .btn{
+    font-family:var(--font-body); font-weight:600; font-size:.95rem; letter-spacing:.02em;
+    padding:13px 22px; border-radius:3px; border:1px solid var(--brass-dim); cursor:pointer;
+    background:transparent; color:var(--parchment); transition:.15s ease; width:100%; margin-top:10px;
+  }
+  .btn:hover{background:rgba(201,162,39,.1); border-color:var(--brass);}
+  .btn.primary{background:var(--brass); color:var(--ink-900); border-color:var(--brass);}
+  .btn.primary:hover{background:var(--brass-bright); border-color:var(--brass-bright);}
+  .btn:disabled{opacity:.35; cursor:not-allowed;}
+  .btn:active:not(:disabled){transform:translateY(1px);}
+
+  .field-label{
+    font-family:var(--font-mono); font-size:.68rem; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--parchment-dim); margin:20px 0 10px; display:block;
+  }
+  .field-label:first-child{margin-top:0;}
+  .stepper{display:flex; align-items:center; justify-content:center; gap:18px;}
+  .stepper button{
+    width:38px; height:38px; border-radius:50%; border:1px solid var(--brass-dim); background:transparent;
+    color:var(--brass); font-size:1.2rem; cursor:pointer; line-height:1;
+  }
+  .stepper button:hover{background:rgba(201,162,39,.12);}
+  .stepper .count{font-family:var(--font-display); font-size:1.6rem; min-width:28px; text-align:center;}
+
+  .player-config-row{
+    display:flex; align-items:center; gap:10px; margin-bottom:8px; padding:8px 10px;
+    background:rgba(0,0,0,.15); border-radius:3px; border:1px solid var(--ink-600);
+  }
+  .player-config-row input[type=text]{
+    flex:1; background:transparent; border:none; border-bottom:1px solid var(--ink-500);
+    color:var(--parchment); font-family:var(--font-body); font-size:.9rem; padding:5px 2px; min-width:0;
+  }
+  .player-config-row input[type=text]:focus{outline:none; border-color:var(--brass);}
+  .swatch{width:22px; height:22px; border-radius:50%; border:2px solid rgba(0,0,0,.3); flex-shrink:0;}
+  .type-select{
+    background:var(--ink-800); border:1px solid var(--ink-500); color:var(--parchment-dim);
+    font-family:var(--font-body); font-size:.78rem; padding:5px 4px; border-radius:3px; flex-shrink:0; max-width:104px;
+  }
+  .type-select:focus{outline:none; border-color:var(--brass);}
+
+  .mode-toggle{display:flex; gap:8px;}
+  .mode-toggle button{
+    flex:1; padding:10px; border-radius:3px; border:1px solid var(--ink-600); background:transparent;
+    color:var(--parchment-dim); font-family:var(--font-body); font-size:.85rem; cursor:pointer;
+  }
+  .mode-toggle button.selected{border-color:var(--brass); color:var(--brass-bright); background:rgba(201,162,39,.08);}
+
+  .mode-pick-row{display:flex; gap:12px;}
+  .mode-pick-btn{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:10px; padding:22px 12px;
+    background:transparent; border:1px solid var(--ink-600); border-radius:4px; color:var(--parchment-dim);
+    font-family:var(--font-body); font-size:.88rem; cursor:pointer; transition:.15s ease;
+  }
+  .mode-pick-btn svg{width:36px; height:36px; color:var(--brass);}
+  .mode-pick-btn:hover{border-color:var(--brass); color:var(--parchment); background:rgba(201,162,39,.08);}
+  .mode-pick-hint{font-family:var(--font-body); font-size:.76rem; color:var(--parchment-dim); line-height:1.5; margin:18px 0 0; text-align:center;}
+  .btn-link{
+    display:block; width:100%; text-align:center; background:none; border:none; color:var(--parchment-dim);
+    font-family:var(--font-body); font-size:.76rem; margin-top:14px; cursor:pointer; text-decoration:underline; text-underline-offset:2px;
+  }
+  .btn-link:hover{color:var(--brass-bright);}
+
+  /* ---------- game screen ---------- */
+  #screen-game{flex-direction:column; height:100%;}
+  .turn-banner{
+    flex:0 0 auto; padding:10px 16px; background:var(--ink-800); border-bottom:1px solid var(--ink-600);
+    display:flex; align-items:center; gap:8px; font-family:var(--font-mono); letter-spacing:.06em;
+    white-space:nowrap; overflow:hidden; --fit-scale:1;
+  }
+  .turn-dot{width:12px; height:12px; border-radius:50%; box-shadow:0 0 8px currentColor; flex-shrink:0;}
+  .turn-banner .name{font-family:var(--font-display); font-size:calc(1.05rem * var(--fit-scale)); letter-spacing:.02em; white-space:nowrap;}
+  .turn-banner .phase-label{color:var(--parchment-dim); text-transform:uppercase; font-size:calc(.68rem * var(--fit-scale)); letter-spacing:.14em; white-space:nowrap;}
+  .save-status{
+    font-size:calc(.68rem * var(--fit-scale)); letter-spacing:.1em; text-transform:uppercase; opacity:0;
+    transition:opacity .3s ease; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    margin-left:auto; min-width:0;
+  }
+  .save-status.show{opacity:1;}
+  .save-status.pending{color:var(--parchment-dim);}
+  .save-status.saved{color:var(--brass);}
+  .save-status.error{color:var(--compass-red-bright);}
+  .save-status.offline{color:var(--parchment-dim);}
+  .btn-help{flex-shrink:0;}
+
+  /* ---------- phone tab bar (hidden unless body.mode-phone) ---------- */
+  .phone-tabbar{display:none;}
+  body.mode-phone .phone-tabbar{
+    display:flex; flex:0 0 auto; background:var(--ink-800); border-bottom:1px solid var(--ink-600);
+  }
+  .ptab-btn{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:9px 4px 8px;
+    background:transparent; border:none; border-bottom:2px solid transparent; color:var(--parchment-dim);
+    font-family:var(--font-body); font-size:.68rem; cursor:pointer; position:relative;
+  }
+  .ptab-btn svg{width:21px; height:21px;}
+  .ptab-btn.active{color:var(--brass-bright); border-bottom-color:var(--brass);}
+  .ptab-badge{
+    display:none; position:absolute; top:6px; right:calc(50% - 20px); width:9px; height:9px; border-radius:50%;
+    background:var(--compass-red-bright); box-shadow:0 0 6px var(--compass-red-bright);
+  }
+  .ptab-badge.show{display:block;}
+
+  .game-body{flex:1; display:grid; grid-template-columns:1fr 330px; grid-template-rows:auto auto 1fr; grid-template-areas:"board players" "board action" "board log"; min-height:0;}
+  .board-wrap{grid-area:board; position:relative; overflow:auto; display:flex; align-items:center; justify-content:center; padding:16px;}
+  .board-wrap svg{width:100%; height:100%; max-width:900px;}
+
+  .action-panel-wrap{grid-area:action; background:var(--ink-800); border-left:1px solid var(--ink-600);}
+  .players-wrap{grid-area:players; background:var(--ink-800); border-left:1px solid var(--ink-600);}
+  .log-wrap{grid-area:log; background:var(--ink-800); border-left:1px solid var(--ink-600); display:flex; flex-direction:column; min-height:0;}
+  .panel-section{padding:14px 16px;}
+  .panel-title{
+    font-family:var(--font-mono); font-size:.68rem; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--brass); margin:0 0 10px; display:flex; justify-content:space-between; align-items:center;
+  }
+  .players-panel{border-bottom:1px solid var(--ink-600);}
+  .ptable-header, .player-row{
+    display:grid; grid-template-columns: minmax(58px,1fr) repeat(5,24px) 34px;
+    align-items:center; column-gap:4px;
+  }
+  .ptable-header{padding:0 6px 7px; margin-bottom:5px; border-bottom:1px solid var(--ink-600);}
+  .ptable-header .rh-icon{display:flex; justify-content:center; color:var(--brass);}
+  .ptable-header .rh-icon svg{width:16px; height:16px;}
+  .ptable-header .rh-vp{font-family:var(--font-mono); font-size:.6rem; color:var(--parchment-dim); text-align:center; letter-spacing:.04em;}
+  .player-row{padding:6px; border-radius:3px; margin-bottom:3px; border:1px solid transparent;}
+  .player-row.active{border-color:var(--brass); background:rgba(201,162,39,.08);}
+  .player-chip{width:11px; height:11px; border-radius:50%; flex-shrink:0; box-shadow:0 0 6px rgba(0,0,0,.4);}
+  .player-row .pident{display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;}
+  .player-row .pname{font-family:var(--font-display); font-size:.9rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .player-row .res-cell{text-align:center; font-family:var(--font-mono); font-size:.8rem; color:var(--parchment);}
+  .player-row .res-hidden{color:var(--parchment-dim); font-size:.72rem; letter-spacing:.02em;}
+  .player-row .pvp{text-align:center; font-family:var(--font-mono); font-size:.8rem; color:var(--brass-bright);}
+  .player-row .pdev{font-size:.62rem; color:var(--parchment-dim); text-align:center; display:block; margin-top:1px;}
+
+  .log-panel{flex:1; min-height:0; display:flex; flex-direction:column;}
+  .save-tools{flex:0 0 auto; display:flex; gap:6px; border-top:1px solid var(--ink-600); padding-top:12px;}
+  .btn-tool{
+    flex:1; background:transparent; border:1px solid var(--ink-600); color:var(--parchment-dim);
+    font-family:var(--font-body); font-size:.72rem; padding:8px 6px; border-radius:3px; cursor:pointer;
+  }
+  .btn-tool:hover{border-color:var(--brass); color:var(--brass-bright);}
+  .log-list{flex:1; overflow-y:auto; display:flex; flex-direction:column-reverse; padding-right:4px;}
+  .log-entry{
+    font-family:var(--font-mono); font-size:.74rem; color:var(--parchment-dim); padding:5px 0;
+    border-bottom:1px solid rgba(255,255,255,.04); line-height:1.4;
+  }
+  .log-entry.build{color:var(--parchment);}
+  .log-entry .tick{color:var(--brass); margin-right:6px;}
+
+  .hex-poly{cursor:default;}
+  .vertex-hit{cursor:pointer;}
+  .vertex-legal{fill:var(--brass-bright); opacity:.9; animation:pulse 1.6s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:.55; r:9;} 50%{opacity:1; r:12;}}
+  .edge-legal{stroke:var(--brass-bright); stroke-width:9; stroke-linecap:round; opacity:.65; cursor:pointer; animation:pulseline 1.6s ease-in-out infinite;}
+  @keyframes pulseline{0%,100%{opacity:.4;} 50%{opacity:.85;}}
+  .edge-hit{stroke:transparent; cursor:pointer; fill:none;}
+  .vertex-hitarea{fill:transparent;}
+  .hex-legal{cursor:pointer; animation:pulse-hex 1.6s ease-in-out infinite;}
+  @keyframes pulse-hex{0%,100%{opacity:.2;} 50%{opacity:.42;}}
+
+  /* ---------- modal ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(10,14,20,.7); display:none; align-items:center; justify-content:center; z-index:50;
+  }
+  .modal-overlay.active{display:flex;}
+  .modal-box{
+    background:var(--ink-800); border:1px solid var(--brass-dim); border-radius:4px; padding:26px 28px; max-width:360px;
+    text-align:center;
+  }
+  .modal-box p{font-family:var(--font-body); font-size:.92rem; line-height:1.5; margin:0 0 18px;}
+  .modal-actions{display:flex; gap:10px;}
+
+  /* ---------- help modal ---------- */
+  .help-box{max-width:440px; text-align:left;}
+  .help-title{font-family:var(--font-display); font-size:1.35rem; color:var(--brass-bright); margin:0 0 14px;}
+  .help-body{font-size:.86rem; line-height:1.6; color:var(--parchment); margin-bottom:20px;}
+  .help-body p{margin:0 0 10px;}
+  .help-body ul{margin:8px 0; padding-left:20px;}
+  .help-body li{margin-bottom:5px;}
+  .btn-help{
+    width:26px; height:26px; border-radius:50%; border:1px solid var(--brass-dim); background:transparent;
+    color:var(--brass); font-family:var(--font-display); font-size:.9rem; cursor:pointer; line-height:1; flex-shrink:0;
+  }
+  .btn-help:hover{background:rgba(201,162,39,.12);}
+
+  /* ---------- dice ---------- */
+  .dice-row{display:flex; gap:10px; align-items:center; justify-content:center; margin-bottom:12px;}
+  .die{width:44px; height:44px;}
+  .roll-total{font-family:var(--font-display); font-size:1.4rem; color:var(--brass-bright);}
+
+  /* ---------- action panel ---------- */
+  .action-panel{border-top:1px solid var(--ink-600); border-bottom:1px solid var(--ink-600);}
+  .action-panel:empty{display:none; border:none;}
+  .action-hint{font-size:.82rem; color:var(--parchment-dim); line-height:1.45; margin:0 0 10px;}
+  .bot-thinking{color:var(--brass); animation:pulse-text 1.4s ease-in-out infinite; text-align:center; padding:8px 0;}
+  @keyframes pulse-text{0%,100%{opacity:.55;} 50%{opacity:1;}}
+  .action-btn{
+    display:block; width:100%; text-align:left; background:rgba(0,0,0,.15); border:1px solid var(--ink-600);
+    color:var(--parchment); font-family:var(--font-body); font-size:.82rem; padding:9px 10px; border-radius:3px;
+    cursor:pointer; margin-bottom:6px;
+  }
+  .action-btn:hover:not(:disabled){border-color:var(--brass);}
+  .action-btn:disabled{opacity:.35; cursor:not-allowed;}
+  .action-btn .cost{float:right; color:var(--parchment-dim); font-family:var(--font-mono); font-size:.72rem; display:inline-flex; align-items:center; gap:5px;}
+  .action-btn .cost .cicon{display:inline-flex; align-items:center; gap:1px;}
+  .action-btn .cost .cicon svg{width:13px; height:13px;}
+  body.mode-phone .action-btn .cost .cicon svg{width:16px; height:16px;}
+  .action-btn.primary{border-color:var(--brass); color:var(--brass-bright);}
+  .btn-end-turn{
+    width:100%; background:var(--brass); color:var(--ink-900); border:none; border-radius:3px; padding:11px;
+    font-family:var(--font-body); font-weight:700; font-size:.85rem; cursor:pointer; margin-top:4px;
+  }
+  .btn-end-turn:hover{background:var(--brass-bright);}
+  .picker-row{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;}
+  .picker-btn{
+    background:var(--ink-700); border:1px solid var(--ink-600); color:var(--parchment); border-radius:3px;
+    padding:8px 10px; font-family:var(--font-body); font-size:.78rem; cursor:pointer; display:flex; align-items:center; gap:5px;
+  }
+  .picker-btn:hover{border-color:var(--brass);}
+  .picker-btn svg{width:15px; height:15px;}
+  .picker-btn .n{font-family:var(--font-mono); color:var(--parchment-dim);}
+  .stepper-row{display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:.8rem;}
+  .stepper-row .rlabel{flex:1; display:flex; align-items:center; gap:5px;}
+  .stepper-row svg{width:15px; height:15px;}
+  .stepper-row button{
+    width:24px; height:24px; border-radius:50%; border:1px solid var(--brass-dim); background:transparent; color:var(--brass);
+    cursor:pointer; font-size:.9rem; line-height:1;
+  }
+  .stepper-row .sval{min-width:16px; text-align:center; font-family:var(--font-mono);}
+
+  /* ---------- dev cards ---------- */
+  .dev-hand{margin-top:8px;}
+  .dev-card-row{
+    display:flex; align-items:center; justify-content:space-between; background:rgba(0,0,0,.15);
+    border:1px solid var(--ink-600); border-radius:3px; padding:7px 9px; margin-bottom:5px; font-size:.78rem;
+  }
+  .dev-card-row .dname{color:var(--parchment);}
+  .dev-card-row .dnew{color:var(--parchment-dim); font-size:.68rem; font-style:italic;}
+  .dev-card-row button{
+    background:transparent; border:1px solid var(--brass-dim); color:var(--brass); border-radius:3px;
+    padding:4px 8px; font-size:.7rem; cursor:pointer;
+  }
+  .dev-card-row button:disabled{opacity:.3; cursor:not-allowed;}
+
+  /* ---------- badges ---------- */
+  .badge{
+    display:inline-flex; align-items:center; gap:3px; font-family:var(--font-mono); font-size:.62rem;
+    padding:1px 5px; border-radius:2px; margin-left:5px; letter-spacing:.03em; white-space:nowrap;
+  }
+  .badge-road{background:rgba(201,162,39,.18); color:var(--brass-bright); border:1px solid var(--brass-dim);}
+  .badge-army{background:rgba(176,72,58,.18); color:var(--compass-red-bright); border:1px solid var(--compass-red);}
+  .badge-bot{background:rgba(201,162,39,.12); color:var(--brass); border:1px solid var(--brass-dim);}
+
+  /* ---------- victory ---------- */
+  .victory-box{text-align:center; max-width:380px;}
+  .victory-box h2{font-family:var(--font-display); font-size:1.8rem; color:var(--brass-bright); margin:0 0 8px;}
+  .victory-box p{font-family:var(--font-body); font-size:.9rem; color:var(--parchment-dim); margin:0 0 20px;}
+
+  /* ---------- pass-and-play screen ---------- */
+  .pass-overlay{
+    position:fixed; inset:0; background:radial-gradient(ellipse at 50% -10%, var(--ink-700), var(--ink-900) 60%);
+    display:none; align-items:center; justify-content:center; flex-direction:column; z-index:200; padding:24px;
+  }
+  .pass-overlay.active{display:flex;}
+  .pass-card{text-align:center; max-width:360px;}
+  .pass-dot{
+    display:block; width:56px; height:56px; border-radius:50%; margin:6px auto 18px;
+    box-shadow:0 0 34px currentColor, inset 0 0 0 3px rgba(255,255,255,.15);
+  }
+  .pass-hint{font-family:var(--font-body); font-size:.85rem; color:var(--parchment-dim); line-height:1.5; margin:10px 0 24px;}
+
+  /* ---------- responsive (pre-mode screens: mode/start/config cards) ---------- */
+  @media (max-width:520px){
+    .card{padding:26px 22px;}
+    h1.title{font-size:1.9rem;}
+  }
+
+  /* ---------- explicit device mode ----------
+     Chosen once at startup (and changeable from the start screen) rather
+     than inferred purely from viewport width, since width alone is
+     ambiguous — a resized browser window, a tablet, or a phone held in
+     landscape don't reliably signal which input method and control size
+     actually fit. Every game session has a mode class applied before the
+     game screen can ever show (the mode picker runs first), so these
+     rules are the only layout logic needed — no separate width-based
+     fallback to keep in sync. */
+  body.mode-phone .btn, body.mode-phone .btn-tool{padding:15px 18px; font-size:1rem;}
+  body.mode-phone .action-btn{padding:13px 12px; font-size:.92rem;}
+  body.mode-phone .btn-end-turn{padding:16px; font-size:.92rem;}
+  body.mode-phone .picker-btn{padding:11px 14px; font-size:.9rem;}
+  body.mode-phone .stepper-row{font-size:.86rem;}
+  body.mode-phone .stepper-row button{width:32px; height:32px; font-size:1.15rem;}
+  body.mode-phone .player-config-row{flex-wrap:wrap;}
+  body.mode-phone .player-config-row input[type=text]{padding:9px 4px; font-size:1rem;}
+  body.mode-phone .player-config-row .type-select{padding:11px 6px; font-size:.95rem; flex-basis:100%; max-width:none; margin-top:8px;}
+  body.mode-phone .die{width:56px; height:56px;}
+  body.mode-phone .btn-help{width:34px; height:34px; font-size:1.1rem; flex-shrink:0;}
+  body.mode-phone .panel-section{padding:16px;}
+  body.mode-phone .turn-banner{padding:12px 14px;}
+  body.mode-phone .mode-pick-btn{padding:28px 12px;}
+
+  /* tabbed game screen instead of side-by-side */
+  body.mode-phone .game-body{display:flex; flex-direction:column; min-height:0;}
+  body.mode-phone [data-ptab]{display:none;}
+  body.mode-phone.ptab-board [data-ptab="board"]{display:flex;}
+  body.mode-phone.ptab-players [data-ptab="players"]{display:block;}
+  body.mode-phone.ptab-log [data-ptab="log"]{display:flex; flex-direction:column;}
+  body.mode-phone .board-wrap{flex:1 1 auto; min-height:0; border-left:none; padding:6px;}
+  body.mode-phone .action-panel-wrap{flex:0 1 auto; max-height:42vh; overflow-y:auto; border-left:none; border-top:1px solid var(--ink-600);}
+  body.mode-phone .players-wrap{flex:1; min-height:0; overflow-y:auto; border-left:none;}
+  body.mode-phone .log-wrap{flex:1; min-height:0; border-left:none;}
+
+  /* the player table gets a full tab to itself, so let it breathe */
+  body.mode-phone .ptable-header, body.mode-phone .player-row{grid-template-columns: minmax(84px,1fr) repeat(5,32px) 44px;}
+  body.mode-phone .ptable-header .rh-icon svg{width:22px; height:22px;}
+  body.mode-phone .player-row{padding:10px 8px;}
+  body.mode-phone .player-row .res-cell{font-size:1rem;}
+  body.mode-phone .player-row .pname{font-size:1rem;}
+  body.mode-phone .player-chip{width:14px; height:14px;}
+  body.mode-phone .player-row .pvp{font-size:.95rem;}
+  body.mode-phone .log-entry{font-size:.88rem; padding:8px 0;}
+  body.mode-phone .dev-card-row{padding:10px 12px; font-size:.86rem;}
+
+  ::-webkit-scrollbar{width:8px; height:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--ink-600); border-radius:4px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ SVG ICON DEFS (shared) ============ -->
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <symbol id="ic-legno" viewBox="0 0 32 32" width="32" height="32"><path d="M16 3 L24 15 L20 15 L26 24 L6 24 L12 15 L8 15 Z" fill="currentColor"/><rect x="14" y="24" width="4" height="5" fill="currentColor"/></symbol>
+      <symbol id="ic-argilla" viewBox="0 0 32 32" width="32" height="32"><rect x="6" y="10" width="9" height="6" rx="1" fill="currentColor"/><rect x="17" y="10" width="9" height="6" rx="1" fill="currentColor"/><rect x="11" y="17" width="9" height="6" rx="1" fill="currentColor"/><rect x="6" y="24" width="20" height="3" rx="1" fill="currentColor" opacity=".6"/></symbol>
+      <symbol id="ic-lana" viewBox="0 0 32 32" width="32" height="32"><circle cx="12" cy="14" r="7" fill="currentColor"/><circle cx="20" cy="13" r="6" fill="currentColor"/><circle cx="16" cy="19" r="7" fill="currentColor"/><circle cx="9" cy="21" r="2.4" fill="currentColor"/></symbol>
+      <symbol id="ic-grano" viewBox="0 0 32 32" width="32" height="32"><path d="M16 4 V26" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M16 8 L9 4 M16 8 L23 4 M16 13 L8 10 M16 13 L24 10 M16 18 L9 15 M16 18 L23 15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></symbol>
+      <symbol id="ic-roccia" viewBox="0 0 32 32" width="32" height="32"><path d="M4 25 L12 9 L18 19 L22 12 L28 25 Z" fill="currentColor"/><path d="M9 19 L12 14 L15 19 Z" fill="currentColor" opacity=".45"/></symbol>
+      <symbol id="ic-deserto" viewBox="0 0 32 32" width="32" height="32"><circle cx="16" cy="10" r="4.5" fill="currentColor"/><path d="M2 24 Q9 16 16 24 T30 24" stroke="currentColor" stroke-width="2.3" fill="none" stroke-linecap="round"/></symbol>
+      <symbol id="ic-settlement" viewBox="0 0 32 32" width="32" height="32"><path d="M6 30 V16 L16 6 L26 16 V30 Z" fill="currentColor" stroke="var(--ink-900)" stroke-width="1.6"/></symbol>
+      <symbol id="ic-city" viewBox="0 0 32 32" width="32" height="32"><path d="M2 30 V17 L9 11 L16 17 V30 Z" fill="currentColor" stroke="var(--ink-900)" stroke-width="1.4"/><path d="M14 30 V10 L23 3 L30 10 V30 Z" fill="currentColor" stroke="var(--ink-900)" stroke-width="1.4"/></symbol>
+      <symbol id="ic-robber" viewBox="0 0 32 32" width="32" height="32"><circle cx="16" cy="9" r="5" fill="currentColor"/><path d="M7 30 C7 18 11 14 16 14 C21 14 25 18 25 30 Z" fill="currentColor"/></symbol>
+      <symbol id="ic-ship" viewBox="0 0 32 32" width="32" height="32"><path d="M4 20 L28 20 L24 27 L8 27 Z" fill="currentColor"/><path d="M16 20 V5 M16 8 L24 12 L16 15 Z" fill="currentColor"/></symbol>
+      <symbol id="ic-card" viewBox="0 0 32 32" width="32" height="32"><rect x="6" y="2" width="20" height="28" rx="2.5" fill="currentColor"/><path d="M16 9 L18.2 13.6 L23 14.3 L19.5 17.6 L20.4 22.4 L16 20.1 L11.6 22.4 L12.5 17.6 L9 14.3 L13.8 13.6 Z" fill="#1B2430"/></symbol>
+      <symbol id="ic-dice" viewBox="0 0 32 32" width="32" height="32"><rect x="3" y="3" width="26" height="26" rx="4" fill="currentColor"/></symbol>
+      <symbol id="ic-desktop" viewBox="0 0 32 32" width="32" height="32"><rect x="2" y="4" width="28" height="19" rx="1.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 27 H20 M16 23 V27" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+      <symbol id="ic-phone" viewBox="0 0 32 32" width="32" height="32"><rect x="8" y="2" width="16" height="28" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M14 27 H18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+      <symbol id="ic-tab-board" viewBox="0 0 32 32" width="32" height="32"><path d="M16 3 L27 9.5 V22.5 L16 29 L5 22.5 V9.5 Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-tab-players" viewBox="0 0 32 32" width="32" height="32"><circle cx="11" cy="11" r="5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="22" cy="13" r="4" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M3 27 C3 20 7 17 12 17 C17 17 20 19.5 21 22 M18 27 C18 22 20.5 19.5 24 19.5 C27.5 19.5 30 22 30 27" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+      <symbol id="ic-tab-log" viewBox="0 0 32 32" width="32" height="32"><rect x="5" y="3" width="22" height="26" rx="2" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M9 10 H23 M9 16 H23 M9 22 H18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+      <symbol id="ic-compass" viewBox="0 0 100 100" width="100" height="100">
+        <circle cx="50" cy="50" r="47" fill="none" stroke="currentColor" stroke-width="1"/>
+        <circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" stroke-width=".6"/>
+        <path d="M50 5 L56 46 L50 50 L44 46 Z" fill="currentColor"/>
+        <path d="M50 95 L44 54 L50 50 L56 54 Z" fill="currentColor" opacity=".5"/>
+        <path d="M5 50 L46 44 L50 50 L46 56 Z" fill="currentColor" opacity=".5"/>
+        <path d="M95 50 L54 56 L50 50 L54 44 Z" fill="currentColor" opacity=".5"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- ============ MODE SELECTION SCREEN ============ -->
+  <div id="screen-mode" class="screen active">
+    <div class="compass" style="width:340px; height:340px; top:-60px; right:-60px; color:var(--brass);"><svg><use href="#ic-compass"/></svg></div>
+    <div class="card">
+      <h1 class="title">Catan</h1>
+      <p class="subtitle">Come vuoi giocare?</p>
+      <div class="mode-pick-row">
+        <button class="mode-pick-btn" id="pick-pc">
+          <svg viewBox="0 0 32 32"><use href="#ic-desktop"/></svg>
+          <span>PC / Tablet</span>
+        </button>
+        <button class="mode-pick-btn" id="pick-phone">
+          <svg viewBox="0 0 32 32"><use href="#ic-phone"/></svg>
+          <span>Smartphone</span>
+        </button>
+      </div>
+      <p class="mode-pick-hint">Regola la dimensione dei controlli e il layout. Si può cambiare in qualsiasi momento.</p>
+    </div>
+  </div>
+
+  <!-- ============ START SCREEN ============ -->
+  <div id="screen-start" class="screen">
+    <div class="compass" style="width:340px; height:340px; top:-60px; right:-60px; color:var(--brass);"><svg><use href="#ic-compass"/></svg></div>
+    <div class="card">
+      <h1 class="title">Catan</h1>
+      <p class="subtitle">Passa e Gioca &middot; Digitale</p>
+      <button class="btn primary" id="btn-new-game">Nuova Partita</button>
+      <button class="btn" id="btn-resume-game" style="display:none;">Riprendi Partita</button>
+      <button class="btn-link" id="btn-change-mode">Modalità: <span id="current-mode-label">PC</span> — cambia</button>
+    </div>
+  </div>
+
+  <!-- ============ CONFIG SCREEN ============ -->
+  <div id="screen-config" class="screen">
+    <div class="card" style="max-width:520px;">
+      <h1 class="title" style="font-size:1.7rem;">Nuova Partita</h1>
+      <p class="subtitle" style="margin-bottom:22px;">Configura i giocatori</p>
+
+      <span class="field-label">Numero di giocatori</span>
+      <div class="stepper">
+        <button id="btn-minus" aria-label="Meno giocatori">−</button>
+        <span class="count" id="player-count">4</span>
+        <button id="btn-plus" aria-label="Più giocatori">+</button>
+      </div>
+
+      <span class="field-label">Giocatori</span>
+      <div id="player-list"></div>
+
+      <span class="field-label">Tabellone</span>
+      <div class="mode-toggle">
+        <button id="mode-random" class="selected">Casuale</button>
+        <button id="mode-fixed">Fissa (principianti)</button>
+      </div>
+
+      <button class="btn primary" id="btn-start-game" style="margin-top:24px;">Inizia Partita</button>
+      <button class="btn" id="btn-back-start">Indietro</button>
+    </div>
+  </div>
+
+  <!-- ============ GAME SCREEN ============ -->
+  <div id="screen-game" class="screen">
+    <div class="turn-banner" id="turn-banner">
+      <span class="turn-dot" id="turn-dot"></span>
+      <span class="name" id="turn-name">—</span>
+      <span class="phase-label" id="phase-label">Setup</span>
+      <span class="save-status" id="save-status"></span>
+      <button class="btn-help" id="btn-help" title="Aiuto per questa fase">?</button>
+    </div>
+
+    <div class="phone-tabbar" id="phone-tabbar">
+      <button class="ptab-btn active" data-ptab-select="board">
+        <svg viewBox="0 0 32 32"><use href="#ic-tab-board"/></svg>
+        <span>Tabellone</span>
+        <span class="ptab-badge" id="ptab-badge-board"></span>
+      </button>
+      <button class="ptab-btn" data-ptab-select="players">
+        <svg viewBox="0 0 32 32"><use href="#ic-tab-players"/></svg>
+        <span>Giocatori</span>
+      </button>
+      <button class="ptab-btn" data-ptab-select="log">
+        <svg viewBox="0 0 32 32"><use href="#ic-tab-log"/></svg>
+        <span>Registro</span>
+      </button>
+    </div>
+
+    <div class="game-body">
+      <div class="board-wrap" data-ptab="board"><svg id="board-svg" viewBox="0 0 100 100"></svg></div>
+      <div class="action-panel-wrap" data-ptab="board">
+        <div class="panel-section action-panel" id="action-panel"></div>
+      </div>
+      <div class="players-wrap" data-ptab="players">
+        <div class="panel-section players-panel">
+          <p class="panel-title">Giocatori</p>
+          <div class="ptable-header">
+            <span></span>
+            <span class="rh-icon" title="Legno"><svg viewBox="0 0 32 32"><use href="#ic-legno"/></svg></span>
+            <span class="rh-icon" title="Argilla"><svg viewBox="0 0 32 32"><use href="#ic-argilla"/></svg></span>
+            <span class="rh-icon" title="Lana"><svg viewBox="0 0 32 32"><use href="#ic-lana"/></svg></span>
+            <span class="rh-icon" title="Grano"><svg viewBox="0 0 32 32"><use href="#ic-grano"/></svg></span>
+            <span class="rh-icon" title="Roccia"><svg viewBox="0 0 32 32"><use href="#ic-roccia"/></svg></span>
+            <span class="rh-vp">PV</span>
+          </div>
+          <div id="players-list"></div>
+        </div>
+      </div>
+      <div class="log-wrap" data-ptab="log">
+        <div class="panel-section log-panel">
+          <p class="panel-title">Registro</p>
+          <div class="log-list" id="log-list"></div>
+        </div>
+        <div class="panel-section save-tools">
+          <button class="btn-tool" id="btn-export" title="Scarica un file di salvataggio">⬇ Esporta partita</button>
+          <button class="btn-tool" id="btn-import" title="Carica un file di salvataggio">⬆ Importa partita</button>
+          <input type="file" id="file-import" accept="application/json" style="display:none" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-box">
+      <p id="modal-text"></p>
+      <div class="modal-actions">
+        <button class="btn" id="modal-cancel">Annulla</button>
+        <button class="btn primary" id="modal-confirm">Conferma</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="help-overlay">
+    <div class="modal-box help-box">
+      <p class="help-title" id="help-title"></p>
+      <div class="help-body" id="help-body"></div>
+      <div class="modal-actions">
+        <button class="btn" id="help-dismiss-forever">Non mostrare più</button>
+        <button class="btn primary" id="help-close">Ho capito</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="victory-overlay">
+    <div class="modal-box victory-box">
+      <h2 id="victory-title"></h2>
+      <p id="victory-text"></p>
+      <button class="btn primary" id="victory-close">Chiudi</button>
+    </div>
+  </div>
+
+  <div class="pass-overlay" id="pass-overlay">
+    <div class="pass-card">
+      <p class="subtitle">Passa e Gioca</p>
+      <span class="pass-dot" id="pass-dot"></span>
+      <h1 class="title" style="font-size:1.7rem;" id="pass-name">—</h1>
+      <p class="pass-hint">Le tue carte sono visibili solo a te. Passa il dispositivo, poi tocca per continuare.</p>
+      <button class="btn primary" id="pass-confirm">Sono io — continua</button>
+    </div>
+  </div>
+
+</div>
+
+
+<script>
+'use strict';
+/* =========================================================================
+   CATAN DIGITALE — Fase 1
+   Motore + tabellone SVG + fase di Setup (hotseat, 2-4 giocatori)
+   ========================================================================= */
+
+const RESOURCES = ['legno','argilla','lana','grano','roccia'];
+const RESOURCE_LABELS = {legno:'Legno', argilla:'Argilla', lana:'Lana', grano:'Grano', roccia:'Roccia'};
+const RESOURCE_COUNTS = {legno:4, argilla:3, lana:4, grano:4, roccia:3, deserto:1};
+const NUMBER_TOKENS = [2,3,3,4,4,5,5,6,6,8,8,9,9,10,10,11,11,12];
+const PLAYER_COLORS = ['#C1443A','#3E72A8','#EDE6D6','#D68A34'];
+const PLAYER_COLOR_NAMES = ['Rosso','Blu','Avorio','Arancione'];
+
+const FIXED_LAYOUT = [
+  ['legno',3],['lana',11],['grano',9],
+  ['argilla',6],['lana',3],['argilla',8],['lana',5],
+  ['grano',11],['roccia',10],['deserto',null],['grano',12],['argilla',8],
+  ['roccia',4],['grano',2],['legno',6],['lana',9],
+  ['legno',5],['roccia',10],['legno',4],
+];
+const FIXED_PORT_TYPES = ['generico','legno','generico','argilla','lana','generico','grano','roccia','generico'];
+const PIP_COUNT = {2:1,3:2,4:3,5:4,6:5,8:5,9:4,10:3,11:2,12:1};
+
+const COSTS = {
+  road: {legno:1, argilla:1},
+  settlement: {legno:1, argilla:1, lana:1, grano:1},
+  city: {grano:2, roccia:3},
+  devcard: {lana:1, grano:1, roccia:1},
+};
+// 25 cards: 14 knight, 5 hidden VP, 2 each of the 3 progress cards.
+// NOTE: resource bank is treated as unlimited (no 19-per-type scarcity) —
+// a deliberate scope simplification, flagged to Lorenzo rather than silently assumed.
+const DEV_DECK_COMPOSITION = (() => {
+  const d = [];
+  for(let i=0;i<14;i++) d.push('cavaliere');
+  for(let i=0;i<5;i++) d.push('vittoria');
+  for(let i=0;i<2;i++) d.push('strade');
+  for(let i=0;i<2;i++) d.push('abbondanza');
+  for(let i=0;i<2;i++) d.push('monopolio');
+  return d;
+})();
+const DEV_LABELS = {cavaliere:'Cavaliere', vittoria:'Punto Vittoria', strade:'Costruzione di Strade', abbondanza:"Anno dell'Abbondanza", monopolio:'Monopolio'};
+const BOT_LABELS = {facile:'FACILE', medio:'MEDIO', difficile:'DIFFICILE'};
+const BOT_NOISE = {facile:9, medio:3.5, difficile:0.8};
+const BOT_DELAY_MS = 750;
+
+const HELP_CONTENT = {
+  setup: {
+    title: 'Fase di Setup',
+    body: `<p>A turno, ogni giocatore piazza <strong>1 insediamento</strong> e <strong>1 strada</strong> collegata ad esso.</p>
+    <p>L'ordine è "a serpente": 1→2→3→4→4→3→2→1 — l'ultimo giocatore piazza due volte di fila.</p>
+    <p>Solo al <strong>secondo</strong> insediamento si ricevono le risorse delle tessere adiacenti (il deserto non produce nulla).</p>`,
+  },
+  'turn-roll': {
+    title: 'Il tuo turno',
+    body: `<p>Lancia <strong>2 dadi</strong>: ogni tessera con quel numero dà una risorsa a chi vi ha costruito accanto (colonia = 1 carta, città = 2), a meno che il brigante non la stia bloccando.</p>
+    <p>Se esce <strong>7</strong>, nessuno riceve risorse: si passa subito alla gestione del brigante.</p>
+    <p>Si vince raggiungendo <strong>10 Punti Vittoria</strong> (contano anche le carte Punto Vittoria nascoste in mano).</p>`,
+  },
+  'turn-robber': {
+    title: 'Il Brigante',
+    body: `<p>Chi ha <strong>più di 7 carte risorsa</strong> in mano ne scarta metà (arrotondata per difetto) — a testa, non in totale.</p>
+    <p>Poi chi ha tirato il 7 sposta il brigante su un'altra tessera qualsiasi: quella tessera smette di produrre risorse finché non lo si sposta di nuovo.</p>
+    <p>Infine si ruba <strong>1 carta a caso</strong> a un avversario con un insediamento o città adiacente alla nuova posizione del brigante.</p>`,
+  },
+  'turn-build': {
+    title: 'Costruzione e Carte Sviluppo',
+    body: `<p>Nella tua fase libera puoi costruire, anche più volte se hai risorse a sufficienza:</p>
+    <ul>
+      <li><strong>Strada</strong> — 1 Legno + 1 Argilla</li>
+      <li><strong>Colonia</strong> — 1 Legno + 1 Argilla + 1 Lana + 1 Grano</li>
+      <li><strong>Città</strong> (su una tua colonia) — 2 Grano + 3 Roccia</li>
+      <li><strong>Carta Sviluppo</strong> — 1 Lana + 1 Grano + 1 Roccia</li>
+    </ul>
+    <p>Le carte sviluppo comprate in questo turno si possono giocare solo a partire dal prossimo.</p>
+    <p>5+ strade collegate di seguito = bonus "Strada Più Lunga" (+2 PV). 3+ cavalieri giocati = bonus "Esercito Più Grande" (+2 PV). Chi viene superato perde il bonus.</p>`,
+  },
+  'turn-trade': {
+    title: 'Commercio',
+    body: `<p><strong>Con la banca/porti</strong>: dai sempre 4 carte dello stesso tipo per riceverne 1 a scelta — 3:1 se hai un insediamento su un porto generico, 2:1 su un porto specifico per quella risorsa.</p>
+    <p><strong>Con gli altri giocatori</strong>: proponi cosa offri e cosa chiedi. Gli avversari, uno alla volta, possono accettare o rifiutare — la prima accettazione chiude lo scambio.</p>
+    <p>Solo chi ha il turno può proporre scambi.</p>`,
+  },
+};
+
+// Resolved hex values mirroring the CSS custom properties above. Used inside
+// dynamically-built SVG markup (svg.innerHTML=...): var() in a presentation
+// attribute string is not guaranteed to resolve the same way var() in a
+// stylesheet rule does, so anything generated as a raw SVG string uses these
+// instead. Static markup and CSS rules keep using the var(--...) custom
+// properties directly.
+const COLORS = {
+  ink900:'#1B2430', ink800:'#232E3D', ink700:'#2D3B4E',
+  parchment:'#E8DCC0', parchmentDim:'#C9BC9C',
+  brass:'#C9A227', brassBright:'#E6BE4A', brassDim:'#8A711F',
+  compassRed:'#B0483A',
+  res:{
+    legno:'#3F6B4A', legnoLt:'#5C8C66',
+    argilla:'#A8583A', argillaLt:'#C47752',
+    lana:'#A8AC5E', lanaLt:'#C3C77E',
+    grano:'#D4A537', granoLt:'#E6C265',
+    roccia:'#737B87', rocciaLt:'#95A0AE',
+    deserto:'#D9C89A', desertoLt:'#E8DCB8',
+  },
+};
+
+/* ---------------------------- Hex math ---------------------------- */
+const HexMath = {
+  size: 62,
+  toPixel(q, r){
+    return { x: this.size*(Math.sqrt(3)*q + Math.sqrt(3)/2*r), y: this.size*1.5*r };
+  },
+  corner(center, i){
+    const ang = Math.PI/180*(60*i-30);
+    return { x: center.x + this.size*Math.cos(ang), y: center.y + this.size*Math.sin(ang) };
+  },
+  ring(radius){
+    const out=[];
+    for(let q=-radius; q<=radius; q++){
+      const r1=Math.max(-radius,-q-radius), r2=Math.min(radius,-q+radius);
+      for(let r=r1;r<=r2;r++) out.push({q,r});
+    }
+    return out;
+  },
+};
+
+/* ---------------------------- RNG ---------------------------- */
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+/* ---------------------------- Board generation ---------------------------- */
+const BoardGen = {
+  buildGraph(hexes){
+    const vmap = new Map(), emap = new Map();
+    let vId=0, eId=0;
+    const posKey = (x,y)=> Math.round(x*100)+','+Math.round(y*100);
+    hexes.forEach(hex=>{
+      const center = HexMath.toPixel(hex.q, hex.r);
+      const corners=[];
+      for(let i=0;i<6;i++){
+        const c = HexMath.corner(center,i);
+        const k = posKey(c.x,c.y);
+        let v = vmap.get(k);
+        if(!v){ v={id:'v'+(vId++), x:c.x, y:c.y, hexIds:[], edgeIds:[], building:null, portType:null}; vmap.set(k,v); }
+        v.hexIds.push(hex.id);
+        corners.push(v);
+      }
+      hex.cornerIds = corners.map(c=>c.id);
+      for(let i=0;i<6;i++){
+        const a=corners[i], b=corners[(i+1)%6];
+        const ek=[a.id,b.id].sort().join('-');
+        let e = emap.get(ek);
+        if(!e){ e={id:'e'+(eId++), v1:a.id, v2:b.id, hexIds:[], road:null}; emap.set(ek,e); }
+        e.hexIds.push(hex.id);
+      }
+    });
+    const vertices=[...vmap.values()], edges=[...emap.values()];
+    const vById = new Map(vertices.map(v=>[v.id,v]));
+    edges.forEach(e=>{ vById.get(e.v1).edgeIds.push(e.id); vById.get(e.v2).edgeIds.push(e.id); });
+    return {vertices, edges};
+  },
+
+  randomHexes(coords){
+    const tiles=[];
+    Object.entries(RESOURCE_COUNTS).forEach(([res,n])=>{ for(let i=0;i<n;i++) tiles.push(res); });
+    const dirs=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+    let hexes, attempt=0;
+    do{
+      attempt++;
+      const resOrder = shuffle(tiles);
+      hexes = coords.map((c,i)=>({...c, id:'h'+i, resource:resOrder[i]}));
+      const nonDesert = hexes.filter(h=>h.resource!=='deserto');
+      const numOrder = shuffle(NUMBER_TOKENS);
+      nonDesert.forEach((h,i)=> h.number = numOrder[i]);
+      const desertHex = hexes.find(h=>h.resource==='deserto');
+      desertHex.number = null;
+      var violation=false;
+      const byPos = new Map(hexes.map(h=>[h.q+','+h.r,h]));
+      for(const h of hexes){
+        if(h.number!==6 && h.number!==8) continue;
+        for(const [dq,dr] of dirs){
+          const nb = byPos.get((h.q+dq)+','+(h.r+dr));
+          if(nb && (nb.number===6||nb.number===8)) violation=true;
+        }
+      }
+    } while(violation && attempt<400);
+    return hexes;
+  },
+
+  fixedHexes(coords){
+    return coords.map((c,i)=>({...c, id:'h'+i, resource:FIXED_LAYOUT[i][0], number:FIXED_LAYOUT[i][1]}));
+  },
+
+  assignPorts(vertices, edges, boardMode){
+    const boundary = edges.filter(e=>e.hexIds.length===1);
+    const vById = new Map(vertices.map(v=>[v.id,v]));
+    const mid = e=>{ const a=vById.get(e.v1), b=vById.get(e.v2); return {x:(a.x+b.x)/2, y:(a.y+b.y)/2}; };
+    const ordered = boundary
+      .map(e=>({e, m:mid(e)}))
+      .map(o=>({...o, angle: Math.atan2(o.m.y, o.m.x)}))
+      .sort((a,b)=>a.angle-b.angle)
+      .map(o=>o.e);
+    const N=9;
+    const idxs = Array.from({length:N}, (_,i)=> Math.round(i*ordered.length/N));
+    const types = boardMode==='fisso' ? FIXED_PORT_TYPES.slice() : shuffle(['generico','generico','generico','generico', ...RESOURCES]);
+    const ports = idxs.map((idx,i)=>{
+      const e = ordered[idx];
+      const a=vById.get(e.v1), b=vById.get(e.v2);
+      a.portType = types[i]; b.portType = types[i];
+      const m = mid(e);
+      const dist = Math.hypot(m.x,m.y) || 1;
+      const dir = {x:m.x/dist, y:m.y/dist};
+      return {id:'port'+i, edgeId:e.id, v1:e.v1, v2:e.v2, type:types[i], x:m.x+dir.x*26, y:m.y+dir.y*26, ax:m.x, ay:m.y};
+    });
+    return ports;
+  },
+};
+
+/* ---------------------------- Storage ---------------------------- */
+const SAVE_KEY = 'catan-game-state';
+const Storage = {
+  // Returns true/false instead of throwing, so callers can show status
+  // without needing their own try/catch. One retry on failure: the observed
+  // "Unexpected response type" error looked transient (likely a burst of
+  // rapid calls), so a short backoff before giving up is worth it.
+  async save(state){
+    const payload = JSON.stringify(state);
+    for(let attempt=1; attempt<=2; attempt++){
+      try{
+        await window.storage.set(SAVE_KEY, payload, false);
+        return true;
+      }catch(err){
+        console.error(`Salvataggio non riuscito (tentativo ${attempt}):`, err);
+        if(attempt===1) await new Promise(r=>setTimeout(r, 700));
+      }
+    }
+    return false;
+  },
+  async load(){
+    try{
+      const res = await window.storage.get(SAVE_KEY, false);
+      return res && res.value ? JSON.parse(res.value) : null;
+    }catch(err){ return null; }
+  },
+  async clear(){
+    try{ await window.storage.delete(SAVE_KEY, false); }
+    catch(err){ /* ignore */ }
+  },
+};
+
+// Debounced, status-reporting save: rapid clicks (placing settlement then
+// road) collapse into a single storage call instead of one per click, which
+// is both kinder to the storage backend and less likely to trip whatever
+// caused "Unexpected response type". The turn banner reflects the outcome
+// either way, so a failed save is visible instead of a silent console log.
+// If saves keep failing outright (not just occasionally), hammering the
+// same broken call on every move is pointless — after 2 consecutive full
+// failures, automatic saving stops for the rest of the session and the
+// status points at the Esporta button instead, which works regardless.
+let saveTimer = null;
+let consecutiveFailures = 0;
+let autoSaveDisabled = false;
+function setSaveStatus(status){
+  const el = document.getElementById('save-status');
+  if(!el) return;
+  const labels = {
+    pending:'Salvataggio…',
+    saved:'Salvato',
+    error:'Salvataggio non riuscito',
+    offline:'Salvataggio auto non disponibile',
+  };
+  el.textContent = labels[status] || '';
+  el.className = 'save-status show ' + status;
+  if(status==='saved'){
+    setTimeout(()=>{ if(el.textContent===labels.saved) el.classList.remove('show'); }, 1600);
+  }
+}
+function scheduleSave(state){
+  if(autoSaveDisabled){ setSaveStatus('offline'); return; }
+  setSaveStatus('pending');
+  if(saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(async ()=>{
+    const ok = await Storage.save(state);
+    if(ok){
+      consecutiveFailures = 0;
+      setSaveStatus('saved');
+    } else {
+      consecutiveFailures++;
+      if(consecutiveFailures >= 2){
+        autoSaveDisabled = true;
+        setSaveStatus('offline');
+      } else {
+        setSaveStatus('error');
+      }
+    }
+  }, 500);
+}
+
+/* ---------------------------- Game state ---------------------------- */
+function createGame(playerConfigs, boardMode){
+  const coords = HexMath.ring(2);
+  const hexes = boardMode==='fisso' ? BoardGen.fixedHexes(coords) : BoardGen.randomHexes(coords);
+  const {vertices, edges} = BoardGen.buildGraph(hexes);
+  const ports = BoardGen.assignPorts(vertices, edges, boardMode);
+  const robberHexId = hexes.find(h=>h.resource==='deserto').id;
+
+  const players = playerConfigs.map((p,i)=>({
+    id:'p'+i, name:p.name, color:p.color,
+    isBot: !!p.isBot, difficulty: p.difficulty || null,
+    resources:{legno:0,argilla:0,lana:0,grano:0,roccia:0},
+    settlements:[], cities:[], roads:[], devCards:[], knightsPlayed:0, victoryPoints:0,
+  }));
+
+  return {
+    version:2,
+    board:{hexes, vertices, edges, ports, robberHexId},
+    players,
+    turnOrder: players.map(p=>p.id),
+    currentPlayerIndex:0,
+    setup:{round:1, awaitingRoad:false, lastVertexId:null},
+    phase:'setup',
+    boardMode,
+    log:[],
+    turnNumber:1,
+    devDeck: shuffle(DEV_DECK_COMPOSITION),
+    longestRoadPlayerId: null,
+    largestArmyPlayerId: null,
+    winnerId: null,
+    pendingDiscards: [],
+    lastRoll: null,
+    buildMode: null,
+    pendingDevCard: null,
+    tradeMode: null,
+    pendingTrade: null,
+  };
+}
+
+function currentPlayer(state){ return state.players[state.currentPlayerIndex]; }
+function findVertex(state,id){ return state.board.vertices.find(v=>v.id===id); }
+function findEdge(state,id){ return state.board.edges.find(e=>e.id===id); }
+
+// Fills in Phase-2 fields for a state saved/exported before they existed, so
+// an old save (or an export from before this update) doesn't crash on load
+// instead of just failing to resume the newer mechanics.
+function migrateState(state){
+  if(state.turnNumber===undefined) state.turnNumber = 1;
+  if(state.devDeck===undefined) state.devDeck = shuffle(DEV_DECK_COMPOSITION);
+  if(state.longestRoadPlayerId===undefined) state.longestRoadPlayerId = null;
+  if(state.largestArmyPlayerId===undefined) state.largestArmyPlayerId = null;
+  if(state.winnerId===undefined) state.winnerId = null;
+  if(state.pendingDiscards===undefined) state.pendingDiscards = [];
+  if(state.lastRoll===undefined) state.lastRoll = null;
+  if(state.buildMode===undefined) state.buildMode = null;
+  if(state.pendingDevCard===undefined) state.pendingDevCard = null;
+  if(state.tradeMode===undefined) state.tradeMode = null;
+  if(state.pendingTrade===undefined) state.pendingTrade = null;
+  if(state.phase==='setup-done') state.phase = 'roll';
+  (state.players||[]).forEach(p=>{
+    if(!p.devCards) p.devCards = [];
+    p.devCards = p.devCards.map(c => typeof c==='string' ? {type:c, boughtTurn:0, played:false} : c);
+    if(p.knightsPlayed===undefined) p.knightsPlayed = 0;
+    if(p.isBot===undefined) p.isBot = false;
+    if(p.difficulty===undefined) p.difficulty = null;
+  });
+  return state;
+}
+
+function adjacentVertexIds(state, vertexId){
+  const v = findVertex(state, vertexId);
+  return v.edgeIds.map(eid=>{ const e=findEdge(state,eid); return e.v1===vertexId ? e.v2 : e.v1; });
+}
+
+function legalSettlementVertices(state){
+  return state.board.vertices.filter(v=>{
+    if(v.building) return false;
+    return adjacentVertexIds(state, v.id).every(aid => !findVertex(state,aid).building);
+  }).map(v=>v.id);
+}
+
+function legalRoadEdges(state, vertexId){
+  const v = findVertex(state, vertexId);
+  return v.edgeIds.filter(eid => !findEdge(state,eid).road);
+}
+
+function pushLog(state, text, type){
+  state.log.push({text, type: type||'info'});
+  if(state.log.length>150) state.log.shift();
+}
+
+function nextSetupTurn(state){
+  const n = state.turnOrder.length;
+  if(state.setup.round===1){
+    if(state.currentPlayerIndex < n-1) state.currentPlayerIndex++;
+    else state.setup.round = 2;
+  } else {
+    if(state.currentPlayerIndex > 0) state.currentPlayerIndex--;
+    else { state.phase = 'roll'; state.turnNumber = 1; }
+  }
+}
+
+function placeSetupSettlement(state, vertexId){
+  const v = findVertex(state, vertexId);
+  const player = currentPlayer(state);
+  v.building = {playerId:player.id, type:'settlement'};
+  player.settlements.push(vertexId);
+  player.victoryPoints++;
+  state.setup.awaitingRoad = true;
+  state.setup.lastVertexId = vertexId;
+  pushLog(state, `${player.name} fonda un insediamento.`, 'build');
+}
+
+function placeSetupRoad(state, edgeId){
+  const e = findEdge(state, edgeId);
+  const player = currentPlayer(state);
+  e.road = player.id;
+  player.roads.push(edgeId);
+  pushLog(state, `${player.name} costruisce una strada.`, 'build');
+
+  if(state.setup.round===2){
+    const v = findVertex(state, state.setup.lastVertexId);
+    const gained = {};
+    v.hexIds.forEach(hid=>{
+      const hex = state.board.hexes.find(h=>h.id===hid);
+      if(hex.resource!=='deserto'){ player.resources[hex.resource]++; gained[hex.resource]=(gained[hex.resource]||0)+1; }
+    });
+    const summary = Object.entries(gained).map(([r,n])=>`${n} ${RESOURCE_LABELS[r]}`).join(', ');
+    if(summary) pushLog(state, `${player.name} riceve: ${summary}.`, 'resource');
+  }
+
+  state.setup.awaitingRoad = false;
+  nextSetupTurn(state);
+  if(state.phase==='roll') pushLog(state, 'Setup completato — inizia il turno di ' + currentPlayer(state).name + '.', 'info');
+}
+
+/* ---------------------------- Main-turn engine ---------------------------- */
+function totalResources(player){
+  return Object.values(player.resources).reduce((a,b)=>a+b,0);
+}
+function canAfford(player, cost){
+  return Object.entries(cost).every(([res,n]) => player.resources[res] >= n);
+}
+function payCost(player, cost){
+  Object.entries(cost).forEach(([res,n]) => { player.resources[res] -= n; });
+}
+
+// ---- Longest Road: DFS over each player's own road edges, edge-visited-set
+// so loops count correctly; stops (but still counts the edge) when the walk
+// would pass THROUGH a vertex owned by another player. Validated separately
+// against 9 hand-built scenarios (straight/branch/cut/loop/disconnected)
+// before being wired in here.
+function computeLongestRoadForPlayer(state, playerId){
+  const playerEdges = state.board.edges.filter(e=>e.road===playerId);
+  if(playerEdges.length===0) return 0;
+  const adj = new Map();
+  playerEdges.forEach(e=>{
+    if(!adj.has(e.v1)) adj.set(e.v1, []);
+    if(!adj.has(e.v2)) adj.set(e.v2, []);
+    adj.get(e.v1).push({edgeId:e.id, to:e.v2});
+    adj.get(e.v2).push({edgeId:e.id, to:e.v1});
+  });
+  function blocked(vertexId){
+    const v = findVertex(state, vertexId);
+    return v.building && v.building.playerId !== playerId;
+  }
+  function dfs(vertexId, visited){
+    let best = visited.size;
+    const neighbors = adj.get(vertexId) || [];
+    for(const {edgeId, to} of neighbors){
+      if(visited.has(edgeId)) continue;
+      visited.add(edgeId);
+      if(blocked(to)){ best = Math.max(best, visited.size); }
+      else { best = Math.max(best, dfs(to, visited)); }
+      visited.delete(edgeId);
+    }
+    return best;
+  }
+  let best = 0;
+  adj.forEach((_, startVertex) => { best = Math.max(best, dfs(startVertex, new Set())); });
+  return best;
+}
+
+function awardBonus(state, kind, newHolderId){
+  const key = kind==='longestRoad' ? 'longestRoadPlayerId' : 'largestArmyPlayerId';
+  const label = kind==='longestRoad' ? 'Strada Più Lunga' : 'Esercito Più Grande';
+  const prevHolder = state[key];
+  if(prevHolder === newHolderId) return;
+  if(prevHolder){
+    const p = state.players.find(x=>x.id===prevHolder);
+    if(p) p.victoryPoints -= 2;
+  }
+  state[key] = newHolderId;
+  if(newHolderId){
+    const p = state.players.find(x=>x.id===newHolderId);
+    p.victoryPoints += 2;
+    pushLog(state, `${p.name} ottiene il bonus "${label}".`, 'info');
+  } else if(prevHolder){
+    pushLog(state, `Il bonus "${label}" non è più assegnato.`, 'info');
+  }
+}
+
+function updateLongestRoad(state){
+  const lengths = {};
+  state.players.forEach(p => lengths[p.id] = computeLongestRoadForPlayer(state, p.id));
+  const holder = state.longestRoadPlayerId;
+  let bestId = holder, bestLen = holder ? lengths[holder] : 0;
+  state.players.forEach(p=>{
+    if(p.id===holder) return;
+    if(lengths[p.id] > bestLen){ bestId = p.id; bestLen = lengths[p.id]; }
+  });
+  if(bestLen < 5){ if(holder) awardBonus(state, 'longestRoad', null); }
+  else { awardBonus(state, 'longestRoad', bestId); }
+}
+
+function updateLargestArmy(state){
+  const holder = state.largestArmyPlayerId;
+  const holderCount = holder ? state.players.find(p=>p.id===holder).knightsPlayed : 0;
+  let bestId = holder, bestCount = holderCount;
+  state.players.forEach(p=>{
+    if(p.id===holder) return;
+    if(p.knightsPlayed > bestCount){ bestId = p.id; bestCount = p.knightsPlayed; }
+  });
+  if(bestCount < 3){ if(holder) awardBonus(state, 'largestArmy', null); }
+  else { awardBonus(state, 'largestArmy', bestId); }
+}
+
+function checkVictory(state){
+  if(state.phase==='game-over') return;
+  const winner = state.players.find(p=>p.victoryPoints>=10);
+  if(winner){
+    state.phase = 'game-over';
+    state.winnerId = winner.id;
+    pushLog(state, `${winner.name} vince la partita con ${winner.victoryPoints} Punti Vittoria!`, 'info');
+  }
+}
+
+// ---- legal moves during the main phase (different from setup: must connect
+// to the player's own network) ----
+function ownRoadVertexIds(state, playerId){
+  const set = new Set();
+  state.board.edges.forEach(e=>{ if(e.road===playerId){ set.add(e.v1); set.add(e.v2); } });
+  return set;
+}
+function legalRoadEdgesForBuild(state, playerId){
+  const ownVerts = ownRoadVertexIds(state, playerId);
+  return state.board.edges.filter(e=>{
+    if(e.road) return false;
+    return ownVerts.has(e.v1) || ownVerts.has(e.v2);
+  }).map(e=>e.id);
+}
+function legalSettlementVerticesForBuild(state, playerId){
+  const ownVerts = ownRoadVertexIds(state, playerId);
+  return state.board.vertices.filter(v=>{
+    if(v.building) return false;
+    if(!ownVerts.has(v.id)) return false;
+    return adjacentVertexIds(state, v.id).every(aid => !findVertex(state,aid).building);
+  }).map(v=>v.id);
+}
+function legalCityVertices(state, playerId){
+  const player = state.players.find(p=>p.id===playerId);
+  return player.settlements.slice();
+}
+
+function buildRoad(state, edgeId, free){
+  const player = currentPlayer(state);
+  if(!free) payCost(player, COSTS.road);
+  const e = findEdge(state, edgeId);
+  e.road = player.id;
+  player.roads.push(edgeId);
+  pushLog(state, `${player.name} costruisce una strada.`, 'build');
+  updateLongestRoad(state);
+  checkVictory(state);
+}
+function buildSettlement(state, vertexId){
+  const player = currentPlayer(state);
+  payCost(player, COSTS.settlement);
+  const v = findVertex(state, vertexId);
+  v.building = {playerId:player.id, type:'settlement'};
+  player.settlements.push(vertexId);
+  player.victoryPoints++;
+  pushLog(state, `${player.name} fonda un insediamento.`, 'build');
+  updateLongestRoad(state); // could cut an opponent's road
+  checkVictory(state);
+}
+function buildCity(state, vertexId){
+  const player = currentPlayer(state);
+  payCost(player, COSTS.city);
+  const v = findVertex(state, vertexId);
+  v.building.type = 'city';
+  player.settlements = player.settlements.filter(id=>id!==vertexId);
+  player.cities.push(vertexId);
+  player.victoryPoints++;
+  pushLog(state, `${player.name} costruisce una città.`, 'build');
+  checkVictory(state);
+}
+
+// ---- dice / resource distribution ----
+function rollDice(state){
+  const d1 = 1+Math.floor(Math.random()*6), d2 = 1+Math.floor(Math.random()*6);
+  const total = d1+d2;
+  state.lastRoll = {d1, d2, total};
+  pushLog(state, `${currentPlayer(state).name} lancia i dadi: ${d1} + ${d2} = ${total}.`, 'roll');
+  if(total===7){
+    state.pendingDiscards = playersNeedingDiscard(state);
+    state.phase = state.pendingDiscards.length>0 ? 'discard' : 'robber-move';
+  } else {
+    distributeResources(state, total);
+    state.phase = 'main';
+  }
+}
+function distributeResources(state, total){
+  const gained = {}; // playerId -> {res:n}
+  state.board.hexes.forEach(hex=>{
+    if(hex.number!==total) return;
+    if(hex.id===state.board.robberHexId) return;
+    state.board.vertices.forEach(v=>{
+      if(!v.hexIds.includes(hex.id) || !v.building) return;
+      const amount = v.building.type==='city' ? 2 : 1;
+      const player = state.players.find(p=>p.id===v.building.playerId);
+      player.resources[hex.resource] += amount;
+      gained[player.id] = gained[player.id] || {};
+      gained[player.id][hex.resource] = (gained[player.id][hex.resource]||0) + amount;
+    });
+  });
+  Object.entries(gained).forEach(([pid, resMap])=>{
+    const player = state.players.find(p=>p.id===pid);
+    const summary = Object.entries(resMap).map(([r,n])=>`${n} ${RESOURCE_LABELS[r]}`).join(', ');
+    pushLog(state, `${player.name} riceve: ${summary}.`, 'resource');
+  });
+}
+
+// ---- discard (7 rolled) ----
+function playersNeedingDiscard(state){
+  return state.players.filter(p => totalResources(p) > 7).map(p=>p.id);
+}
+function discardAmount(player){ return Math.floor(totalResources(player)/2); }
+function applyDiscard(state, playerId, discardMap){
+  const player = state.players.find(p=>p.id===playerId);
+  Object.entries(discardMap).forEach(([res,n])=>{ player.resources[res] -= n; });
+  const summary = Object.entries(discardMap).filter(([,n])=>n>0).map(([r,n])=>`${n} ${RESOURCE_LABELS[r]}`).join(', ');
+  pushLog(state, `${player.name} scarta: ${summary}.`, 'resource');
+  state.pendingDiscards = state.pendingDiscards.filter(id=>id!==playerId);
+  if(state.pendingDiscards.length===0) state.phase = 'robber-move';
+}
+
+// ---- robber ----
+function robberVictimCandidates(state, hexId){
+  const active = currentPlayer(state);
+  const ids = new Set();
+  state.board.vertices.forEach(v=>{
+    if(!v.hexIds.includes(hexId) || !v.building) return;
+    if(v.building.playerId===active.id) return;
+    const p = state.players.find(pl=>pl.id===v.building.playerId);
+    if(totalResources(p)>0) ids.add(p.id);
+  });
+  return [...ids];
+}
+function moveRobber(state, hexId){
+  state.board.robberHexId = hexId;
+  pushLog(state, `${currentPlayer(state).name} sposta il brigante.`, 'info');
+  const candidates = robberVictimCandidates(state, hexId);
+  state.phase = candidates.length>0 ? 'robber-steal' : 'main';
+}
+function stealFrom(state, victimId){
+  const active = currentPlayer(state);
+  const victim = state.players.find(p=>p.id===victimId);
+  const pool = [];
+  RESOURCES.forEach(r=>{ for(let i=0;i<victim.resources[r];i++) pool.push(r); });
+  if(pool.length>0){
+    const picked = pool[Math.floor(Math.random()*pool.length)];
+    victim.resources[picked]--;
+    active.resources[picked]++;
+  }
+  pushLog(state, `${active.name} ruba una carta a ${victim.name}.`, 'info');
+  state.phase = 'main';
+}
+
+// ---- development cards ----
+function buyDevCard(state){
+  const player = currentPlayer(state);
+  if(state.devDeck.length===0) return false;
+  payCost(player, COSTS.devcard);
+  const type = state.devDeck.pop();
+  player.devCards.push({type, boughtTurn: state.turnNumber, played:false});
+  if(type==='vittoria'){ player.victoryPoints++; }
+  pushLog(state, `${player.name} compra una carta sviluppo.`, 'build');
+  checkVictory(state);
+  return true;
+}
+function playableDevCards(state, player){
+  return player.devCards.filter(c => !c.played && c.type!=='vittoria' && c.boughtTurn < state.turnNumber);
+}
+function playKnight(state, cardIndex){
+  const player = currentPlayer(state);
+  player.devCards[cardIndex].played = true;
+  player.knightsPlayed++;
+  pushLog(state, `${player.name} gioca un Cavaliere.`, 'info');
+  updateLargestArmy(state);
+  state.phase = 'robber-move';
+  state.pendingDevCard = null;
+}
+function playRoadBuilding(state, cardIndex){
+  const player = currentPlayer(state);
+  player.devCards[cardIndex].played = true;
+  pushLog(state, `${player.name} gioca Costruzione di Strade: 2 strade gratuite.`, 'info');
+  state.pendingDevCard = {type:'strade', roadsLeft:2};
+}
+function playYearOfPlenty(state, cardIndex, picks){
+  const player = currentPlayer(state);
+  player.devCards[cardIndex].played = true;
+  picks.forEach(r => player.resources[r]++);
+  const summary = picks.map(r=>RESOURCE_LABELS[r]).join(', ');
+  pushLog(state, `${player.name} gioca Anno dell'Abbondanza: prende ${summary}.`, 'info');
+  state.pendingDevCard = null;
+}
+function playMonopoly(state, cardIndex, resource){
+  const player = currentPlayer(state);
+  player.devCards[cardIndex].played = true;
+  let total = 0;
+  state.players.forEach(p=>{
+    if(p.id===player.id) return;
+    total += p.resources[resource];
+    p.resources[resource] = 0;
+  });
+  player.resources[resource] += total;
+  pushLog(state, `${player.name} gioca Monopolio su ${RESOURCE_LABELS[resource]}: ottiene ${total} carte.`, 'info');
+  state.pendingDevCard = null;
+}
+
+function endTurn(state){
+  state.buildMode = null;
+  state.pendingDevCard = null;
+  state.tradeMode = null;
+  state.pendingTrade = null;
+  const n = state.turnOrder.length;
+  state.currentPlayerIndex = (state.currentPlayerIndex + 1) % n;
+  state.turnNumber++;
+  state.phase = 'roll';
+  state.lastRoll = null;
+}
+
+/* ---------------------------- Trading (Fase 3) ---------------------------- */
+// Best available bank/port ratio for a given resource: 2:1 if the player has
+// a settlement/city on a port matching that exact resource, else 3:1 on a
+// generic port, else the baseline 4:1.
+function bestTradeRatio(state, playerId, resource){
+  const player = state.players.find(p=>p.id===playerId);
+  const ownVertexIds = [...player.settlements, ...player.cities];
+  let best = 4;
+  ownVertexIds.forEach(vid=>{
+    const v = findVertex(state, vid);
+    if(!v.portType) return;
+    if(v.portType===resource) best = Math.min(best, 2);
+    else if(v.portType==='generico') best = Math.min(best, 3);
+  });
+  return best;
+}
+function maritimeTrade(state, giveResource, receiveResource){
+  const player = currentPlayer(state);
+  if(giveResource===receiveResource) return false;
+  const ratio = bestTradeRatio(state, player.id, giveResource);
+  if(player.resources[giveResource] < ratio) return false;
+  player.resources[giveResource] -= ratio;
+  player.resources[receiveResource] += 1;
+  pushLog(state, `${player.name} scambia ${ratio} ${RESOURCE_LABELS[giveResource]} per 1 ${RESOURCE_LABELS[receiveResource]} (porto).`, 'info');
+  return true;
+}
+
+// Player-to-player trade: only the active player proposes; every other
+// player is asked in turn order whether they accept, stopping at the first
+// acceptance. Modeled as explicit propose/respond state (rather than an
+// instant "pick a partner" shortcut) so a future bot player can plug into
+// exactly the same accept/reject decision point instead of needing a
+// separate code path.
+function proposeTrade(state, offer, request){
+  const active = currentPlayer(state);
+  if(!canAfford(active, offer)) return false;
+  const totalOffer = Object.values(offer).reduce((a,b)=>a+b,0);
+  const totalRequest = Object.values(request).reduce((a,b)=>a+b,0);
+  if(totalOffer<=0 || totalRequest<=0) return false;
+  const targetIds = state.players.filter(p=>p.id!==active.id).map(p=>p.id);
+  state.pendingTrade = {fromId:active.id, offer, request, targetIds, askIndex:0};
+  const offerStr = Object.entries(offer).filter(([,n])=>n>0).map(([r,n])=>`${n} ${RESOURCE_LABELS[r]}`).join(', ');
+  const reqStr = Object.entries(request).filter(([,n])=>n>0).map(([r,n])=>`${n} ${RESOURCE_LABELS[r]}`).join(', ');
+  pushLog(state, `${active.name} propone: offre ${offerStr}, chiede ${reqStr}.`, 'info');
+  return true;
+}
+function respondTrade(state, accept){
+  const trade = state.pendingTrade;
+  if(!trade) return;
+  const targetId = trade.targetIds[trade.askIndex];
+  const target = state.players.find(p=>p.id===targetId);
+  const active = state.players.find(p=>p.id===trade.fromId);
+  if(accept && canAfford(target, trade.request)){
+    Object.entries(trade.offer).forEach(([r,n])=>{ active.resources[r]-=n; target.resources[r]+=n; });
+    Object.entries(trade.request).forEach(([r,n])=>{ target.resources[r]-=n; active.resources[r]+=n; });
+    pushLog(state, `${target.name} accetta lo scambio con ${active.name}.`, 'info');
+    state.pendingTrade = null;
+    return;
+  }
+  if(accept) pushLog(state, `${target.name} non ha le risorse richieste.`, 'info');
+  trade.askIndex++;
+  if(trade.askIndex >= trade.targetIds.length){
+    pushLog(state, `Nessuno ha accettato lo scambio.`, 'info');
+    state.pendingTrade = null;
+  }
+}
+function cancelPendingTrade(state){
+  if(state.pendingTrade){
+    pushLog(state, `${currentPlayer(state).name} ritira la proposta di scambio.`, 'info');
+    state.pendingTrade = null;
+  }
+}
+
+/* ---------------------------- Bot AI (Fase 4) ---------------------------- */
+// Shared scoring pattern across all bot decisions: score every legal option,
+// add random noise scaled by difficulty (a lot for Facile, almost none for
+// Difficile), and take the best. This keeps the three tiers as one tunable
+// heuristic instead of three separate implementations to maintain.
+function pickBestWithNoise(candidates, scoreFn, difficulty){
+  const noise = BOT_NOISE[difficulty] || BOT_NOISE.medio;
+  let best = null, bestScore = -Infinity;
+  candidates.forEach(c=>{
+    const s = scoreFn(c) + (Math.random()-0.5)*2*noise;
+    if(s>bestScore){ bestScore=s; best=c; }
+  });
+  return best;
+}
+// Probability-weighted resource value of a vertex: sum of pip-counts of
+// adjacent non-desert hexes, a small bonus for resource diversity (3 of the
+// same number is worse than 3 different ones), and a small bonus for ports.
+function vertexScore(state, vertexId){
+  const v = findVertex(state, vertexId);
+  let score = 0;
+  const seen = new Set();
+  v.hexIds.forEach(hid=>{
+    const hex = state.board.hexes.find(h=>h.id===hid);
+    if(hex.resource==='deserto') return;
+    score += PIP_COUNT[hex.number] || 0;
+    seen.add(hex.resource);
+  });
+  score += seen.size * 0.6;
+  if(v.portType) score += 1.2;
+  return score;
+}
+
+function botChooseSetupSettlement(state, difficulty){
+  return pickBestWithNoise(legalSettlementVertices(state), vid=>vertexScore(state,vid), difficulty);
+}
+function botChooseSetupRoad(state, difficulty){
+  const anchor = state.setup.lastVertexId;
+  return pickBestWithNoise(legalRoadEdges(state, anchor), eid=>{
+    const e = findEdge(state, eid);
+    const other = e.v1===anchor ? e.v2 : e.v1;
+    return vertexScore(state, other);
+  }, difficulty);
+}
+function botChooseDiscard(state, player, need, difficulty){
+  const discardMap = {}; RESOURCES.forEach(r=>discardMap[r]=0);
+  const noise = BOT_NOISE[difficulty] || BOT_NOISE.medio;
+  const order = RESOURCES.slice().sort((a,b) =>
+    (player.resources[b]+(Math.random()-0.5)*noise) - (player.resources[a]+(Math.random()-0.5)*noise));
+  let remaining = need;
+  for(const r of order){
+    if(remaining<=0) break;
+    const take = Math.min(player.resources[r], remaining);
+    discardMap[r] = take;
+    remaining -= take;
+  }
+  return discardMap;
+}
+function botChooseRobberHex(state, difficulty){
+  const active = currentPlayer(state);
+  return pickBestWithNoise(computeLegalHexes(state), hid=>{
+    let score = 0;
+    state.board.vertices.forEach(v=>{
+      if(!v.hexIds.includes(hid) || !v.building) return;
+      if(v.building.playerId===active.id){ score -= 6; return; }
+      const p = state.players.find(pl=>pl.id===v.building.playerId);
+      score += p.victoryPoints * (v.building.type==='city'?2:1);
+    });
+    return score;
+  }, difficulty);
+}
+function botChooseRobberVictim(state, candidates, difficulty){
+  if(candidates.length===0) return null;
+  return pickBestWithNoise(candidates, pid=>{
+    const p = state.players.find(x=>x.id===pid);
+    return totalResources(p) + p.victoryPoints*0.5;
+  }, difficulty);
+}
+function botChooseYearOfPlenty(state, player){
+  const sorted = RESOURCES.slice().sort((a,b)=>player.resources[a]-player.resources[b]);
+  return [sorted[0], sorted[1]];
+}
+function botChooseMonopoly(state, player){
+  let best=null, bestSum=-1;
+  RESOURCES.forEach(r=>{
+    const sum = state.players.filter(p=>p.id!==player.id).reduce((s,p)=>s+p.resources[r],0);
+    if(sum>bestSum){ bestSum=sum; best=r; }
+  });
+  return best;
+}
+function botRespondToTrade(state, player, trade, difficulty){
+  if(!canAfford(player, trade.request)) return false;
+  const valueOf = r => 4/(1+player.resources[r]);
+  const giveValue = Object.entries(trade.request).reduce((s,[r,n])=>s+n*valueOf(r),0);
+  const getValue = Object.entries(trade.offer).reduce((s,[r,n])=>s+n*valueOf(r),0);
+  const threshold = {facile:0.6, medio:0.95, difficile:1.1}[difficulty] || 0.95;
+  const noise = BOT_NOISE[difficulty] || BOT_NOISE.medio;
+  return (getValue + (Math.random()-0.5)*noise*0.3) >= giveValue*threshold;
+}
+function shouldPlayKnight(state, player, difficulty){
+  const onOwnHex = state.board.vertices.some(v =>
+    v.hexIds.includes(state.board.robberHexId) && v.building && v.building.playerId===player.id);
+  if(onOwnHex) return true;
+  if(player.knightsPlayed+1>=3 && state.largestArmyPlayerId!==player.id) return true;
+  return Math.random() < (difficulty==='difficile' ? 0.35 : difficulty==='facile' ? 0.3 : 0.2);
+}
+function considerMaritimeTrade(state, player, difficulty){
+  if(difficulty==='facile' && Math.random()>0.3) return null;
+  const needed = new Set();
+  [COSTS.settlement, COSTS.city, COSTS.devcard].forEach(recipe=>{
+    Object.keys(recipe).forEach(r=>{ if(player.resources[r]===0) needed.add(r); });
+  });
+  if(needed.size===0) return null;
+  let bestGive=null, bestRatio=Infinity;
+  RESOURCES.forEach(r=>{
+    if(needed.has(r)) return;
+    const ratio = bestTradeRatio(state, player.id, r);
+    if(player.resources[r] >= ratio+1 && ratio<bestRatio){ bestRatio=ratio; bestGive=r; }
+  });
+  if(!bestGive) return null;
+  return {give:bestGive, receive:[...needed][0]};
+}
+function considerPlayerTrade(state, player){
+  const short = Object.entries(COSTS.settlement).find(([r,n])=>player.resources[r]<n);
+  if(!short) return null;
+  const [needRes] = short;
+  const excess = RESOURCES.find(r=>r!==needRes && player.resources[r]>=3);
+  if(!excess) return null;
+  const offer = {legno:0,argilla:0,lana:0,grano:0,roccia:0};
+  const request = {legno:0,argilla:0,lana:0,grano:0,roccia:0};
+  offer[excess]=1; request[needRes]=1;
+  return {offer, request};
+}
+function devCardBuyChance(difficulty){ return {facile:0.15, medio:0.3, difficile:0.4}[difficulty] || 0.25; }
+function roadBuildChance(difficulty){ return {facile:0.35, medio:0.5, difficile:0.55}[difficulty] || 0.4; }
+
+// One atomic decision per call — the async driver executes it, re-renders,
+// waits, and calls again. Keeps every step visible/loggable instead of a
+// bot silently doing its whole turn in one jump.
+function botMainStep(state, difficulty){
+  const player = currentPlayer(state);
+
+  if(canAfford(player, COSTS.city)){
+    const spots = legalCityVertices(state, player.id);
+    if(spots.length>0) return {type:'city', vertexId: pickBestWithNoise(spots, vid=>vertexScore(state,vid), difficulty)};
+  }
+  if(canAfford(player, COSTS.settlement)){
+    const spots = legalSettlementVerticesForBuild(state, player.id);
+    if(spots.length>0) return {type:'settlement', vertexId: pickBestWithNoise(spots, vid=>vertexScore(state,vid), difficulty)};
+  }
+  const knightIdx = player.devCards.findIndex(c=>!c.played && c.type==='cavaliere' && c.boughtTurn<state.turnNumber);
+  if(knightIdx>=0 && shouldPlayKnight(state, player, difficulty)) return {type:'playdev', cardIndex:knightIdx, cardType:'cavaliere'};
+
+  if(canAfford(player, COSTS.devcard) && state.devDeck.length>0 && Math.random()<devCardBuyChance(difficulty)){
+    return {type:'devcard'};
+  }
+  if(canAfford(player, COSTS.road)){
+    const spots = legalRoadEdgesForBuild(state, player.id);
+    if(spots.length>0 && Math.random()<roadBuildChance(difficulty)){
+      const best = pickBestWithNoise(spots, eid=>{
+        const e = findEdge(state, eid);
+        return Math.max(vertexScore(state,e.v1), vertexScore(state,e.v2));
+      }, difficulty);
+      return {type:'road', edgeId: best};
+    }
+  }
+  const maritime = considerMaritimeTrade(state, player, difficulty);
+  if(maritime) return {type:'maritime', give:maritime.give, receive:maritime.receive};
+
+  if(difficulty!=='facile' && Math.random()<0.25){
+    const proposal = considerPlayerTrade(state, player);
+    if(proposal) return {type:'proposetrade', offer:proposal.offer, request:proposal.request};
+  }
+  return {type:'end'};
+}
+
+// The player who currently needs to make a private decision — the active
+// player most of the time, but the discarder during 'discard' or whoever is
+// being asked during a pending trade. Shared by bot-turn detection and the
+// pass-and-play reveal gate so the two can never disagree about whose turn
+// it privately is.
+function currentActorId(state){
+  if(!state) return null;
+  if(state.phase==='discard') return state.pendingDiscards[0];
+  if(state.phase==='main' && state.pendingTrade) return state.pendingTrade.targetIds[state.pendingTrade.askIndex];
+  return currentPlayer(state).id;
+}
+function isBotDecisionNow(state){
+  if(!state || state.phase==='game-over') return false;
+  const actor = state.players.find(p=>p.id===currentActorId(state));
+  return actor ? actor.isBot : false;
+}
+function botDecisionPlayerName(state){
+  const actor = state.players.find(p=>p.id===currentActorId(state));
+  return actor ? actor.name : '';
+}
+
+let botTimer = null;
+function scheduleBotTick(){
+  if(botTimer) clearTimeout(botTimer);
+  if(!gameState || !isBotDecisionNow(gameState)) return;
+  botTimer = setTimeout(runBotTick, BOT_DELAY_MS);
+}
+function runBotTick(){
+  if(!gameState || gameState.phase==='game-over' || !isBotDecisionNow(gameState)) return;
+
+  if(gameState.phase==='discard'){
+    const pid = gameState.pendingDiscards[0];
+    const p = gameState.players.find(x=>x.id===pid);
+    applyDiscard(gameState, pid, botChooseDiscard(gameState, p, discardAmount(p), p.difficulty));
+    scheduleSave(gameState); render(); return;
+  }
+
+  const active = currentPlayer(gameState);
+
+  if(gameState.phase==='setup'){
+    if(!gameState.setup.awaitingRoad){
+      placeSetupSettlement(gameState, botChooseSetupSettlement(gameState, active.difficulty));
+    } else {
+      placeSetupRoad(gameState, botChooseSetupRoad(gameState, active.difficulty));
+    }
+    scheduleSave(gameState); render(); return;
+  }
+  if(gameState.phase==='roll'){
+    rollDice(gameState);
+    scheduleSave(gameState); render(); return;
+  }
+  if(gameState.phase==='robber-move'){
+    moveRobber(gameState, botChooseRobberHex(gameState, active.difficulty));
+    scheduleSave(gameState); render(); return;
+  }
+  if(gameState.phase==='robber-steal'){
+    const candidates = robberVictimCandidates(gameState, gameState.board.robberHexId);
+    const victim = botChooseRobberVictim(gameState, candidates, active.difficulty);
+    if(victim) stealFrom(gameState, victim); else gameState.phase='main';
+    scheduleSave(gameState); render(); return;
+  }
+  if(gameState.phase==='main'){
+    if(gameState.pendingTrade){
+      const trade = gameState.pendingTrade;
+      const target = gameState.players.find(p=>p.id===trade.targetIds[trade.askIndex]);
+      respondTrade(gameState, botRespondToTrade(gameState, target, trade, target.difficulty));
+      scheduleSave(gameState); render(); return;
+    }
+    if(gameState.pendingDevCard){
+      const pdc = gameState.pendingDevCard;
+      if(pdc.type==='abbondanza'){ playYearOfPlenty(gameState, pdc.cardIndex, botChooseYearOfPlenty(gameState, active)); }
+      else if(pdc.type==='monopolio'){ playMonopoly(gameState, pdc.cardIndex, botChooseMonopoly(gameState, active)); }
+      else if(pdc.type==='strade'){
+        const spots = legalRoadEdgesForBuild(gameState, active.id);
+        if(spots.length>0){
+          const best = pickBestWithNoise(spots, eid=>{ const e=findEdge(gameState,eid); return Math.max(vertexScore(gameState,e.v1),vertexScore(gameState,e.v2)); }, active.difficulty);
+          buildRoad(gameState, best, true);
+          pdc.roadsLeft--;
+          if(pdc.roadsLeft<=0) gameState.pendingDevCard = null;
+        } else {
+          gameState.pendingDevCard = null;
+        }
+      }
+      scheduleSave(gameState); render(); return;
+    }
+    const step = botMainStep(gameState, active.difficulty);
+    if(step.type==='end'){ endTurn(gameState); }
+    else if(step.type==='city'){ buildCity(gameState, step.vertexId); }
+    else if(step.type==='settlement'){ buildSettlement(gameState, step.vertexId); }
+    else if(step.type==='road'){ buildRoad(gameState, step.edgeId, false); }
+    else if(step.type==='devcard'){ buyDevCard(gameState); }
+    else if(step.type==='playdev' && step.cardType==='cavaliere'){ playKnight(gameState, step.cardIndex); }
+    else if(step.type==='maritime'){ maritimeTrade(gameState, step.give, step.receive); }
+    else if(step.type==='proposetrade'){ proposeTrade(gameState, step.offer, step.request); }
+    scheduleSave(gameState); render(); return;
+  }
+}
+
+/* ---------------------------- Pass-and-play reveal gate ----------------------------
+   revealedPlayerId is the player whose private info (resource breakdown) is
+   currently safe to show on screen. It only changes when the person holding
+   the device explicitly confirms the pass-overlay — never automatically —
+   so a hand is never drawn on screen before its owner has confirmed they're
+   the one looking. Bots never need this (nothing to hide from a computer),
+   and once the game ends there's nothing left to protect. */
+let revealedPlayerId = null;
+function maybeShowPassScreen(state){
+  const overlay = document.getElementById('pass-overlay');
+  if(!state || state.phase==='game-over'){ overlay.classList.remove('active'); return; }
+  const actorId = currentActorId(state);
+  const actor = state.players.find(p=>p.id===actorId);
+  if(!actor || actor.isBot || actorId===revealedPlayerId){
+    overlay.classList.remove('active');
+    return;
+  }
+  document.getElementById('pass-name').textContent = actor.name;
+  const dot = document.getElementById('pass-dot');
+  dot.style.background = actor.color;
+  dot.style.color = actor.color;
+  overlay.classList.add('active');
+}
+function wirePassScreen(){
+  document.getElementById('pass-confirm').addEventListener('click', ()=>{
+    if(!gameState) return;
+    revealedPlayerId = currentActorId(gameState);
+    document.getElementById('pass-overlay').classList.remove('active');
+    setPhoneTab('board'); // whoever just confirmed almost certainly wants to see the board/action panel first
+    render();
+  });
+}
+
+/* ---------------------------- Rendering ---------------------------- */
+function resourceIcon(res){ return `<use href="#ic-${res}"/>`; }
+function costIcons(cost){
+  return Object.entries(cost).filter(([,n])=>n>0).map(([r,n])=>
+    Array(n).fill(0).map(()=>`<span class="cicon"><svg viewBox="0 0 32 32">${resourceIcon(r)}</svg></span>`).join('')
+  ).join('');
+}
+
+function computeLegalEdges(state){
+  if(state.phase==='setup' && state.setup.awaitingRoad) return legalRoadEdges(state, state.setup.lastVertexId);
+  if(state.phase==='main' && state.pendingDevCard && state.pendingDevCard.type==='strade') return legalRoadEdgesForBuild(state, currentPlayer(state).id);
+  if(state.phase==='main' && state.buildMode==='road') return legalRoadEdgesForBuild(state, currentPlayer(state).id);
+  return [];
+}
+function computeLegalVerts(state){
+  if(state.phase==='setup' && !state.setup.awaitingRoad) return legalSettlementVertices(state);
+  if(state.phase==='main' && state.buildMode==='settlement') return legalSettlementVerticesForBuild(state, currentPlayer(state).id);
+  return [];
+}
+function computeLegalCityVerts(state){
+  if(state.phase==='main' && state.buildMode==='city') return legalCityVertices(state, currentPlayer(state).id);
+  return [];
+}
+function computeLegalHexes(state){
+  if(state.phase==='robber-move') return state.board.hexes.filter(h=>h.id!==state.board.robberHexId).map(h=>h.id);
+  return [];
+}
+
+function renderBoard(state){
+  const svg = document.getElementById('board-svg');
+  const {vertices, edges, hexes, ports, robberHexId} = state.board;
+  const vertexHitR = appMode==='phone' ? 27 : 20;
+  const edgeHitW = appMode==='phone' ? 30 : 22;
+
+  const xs = vertices.map(v=>v.x), ys = vertices.map(v=>v.y);
+  const pad = 60;
+  const minX = Math.min(...xs)-pad, maxX = Math.max(...xs)+pad;
+  const minY = Math.min(...ys)-pad, maxY = Math.max(...ys)+pad;
+  svg.setAttribute('viewBox', `${minX} ${minY} ${maxX-minX} ${maxY-minY}`);
+
+  let html = '';
+
+  // hex gradients
+  html += '<defs>';
+  RESOURCES.concat('deserto').forEach(res=>{
+    html += `<radialGradient id="grad-${res}" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="${COLORS.res[res+'Lt']}"/>
+      <stop offset="100%" stop-color="${COLORS.res[res]}"/>
+    </radialGradient>`;
+  });
+  html += '</defs>';
+
+  // hex tiles
+  const legalHexes = isBotDecisionNow(state) ? [] : computeLegalHexes(state);
+  hexes.forEach(hex=>{
+    const center = HexMath.toPixel(hex.q, hex.r);
+    const pts = [];
+    for(let i=0;i<6;i++){ const c = HexMath.corner(center,i); pts.push(`${c.x.toFixed(1)},${c.y.toFixed(1)}`); }
+    const ptsStr = pts.join(' ');
+    html += `<polygon class="hex-poly" points="${ptsStr}" fill="url(#grad-${hex.resource})" stroke="${COLORS.ink900}" stroke-width="2.5"/>`;
+    if(hex.resource!=='deserto'){
+      html += `<g color="rgba(0,0,0,.35)" transform="translate(${center.x-11},${center.y-42}) scale(0.9)">${resourceIcon(hex.resource)}</g>`;
+    }
+    if(hex.number!=null){
+      const hot = hex.number===6 || hex.number===8;
+      html += `<circle cx="${center.x}" cy="${center.y+10}" r="17" fill="${COLORS.parchment}" stroke="${COLORS.brass}" stroke-width="2.4"/>`;
+      html += `<text x="${center.x}" y="${center.y+16}" text-anchor="middle" font-family="'SF Mono','Cascadia Mono',Consolas,'Courier New',monospace" font-weight="700" font-size="16" fill="${hot?COLORS.compassRed:COLORS.ink900}">${hex.number}</text>`;
+      const pips = PIP_COUNT[hex.number]||0;
+      const startX = center.x - (pips-1)*2.6;
+      for(let i=0;i<pips;i++){
+        html += `<circle cx="${startX+i*5.2}" cy="${center.y+24}" r="1.3" fill="${hot?COLORS.compassRed:COLORS.ink700}"/>`;
+      }
+    }
+    if(hex.id===robberHexId){
+      html += `<g color="${COLORS.ink900}" transform="translate(${center.x-11},${center.y-30}) scale(0.9)"><use href="#ic-robber"/></g>`;
+      html += `<g color="${COLORS.parchment}" transform="translate(${center.x-10},${center.y-31}) scale(0.85)"><use href="#ic-robber"/></g>`;
+    }
+    if(legalHexes.includes(hex.id)){
+      html += `<polygon class="hex-legal" points="${ptsStr}" data-hex="${hex.id}" fill="${COLORS.brassBright}" opacity="0.28" stroke="${COLORS.brassBright}" stroke-width="3"/>`;
+    }
+  });
+
+  // ports
+  ports.forEach(p=>{
+    html += `<line x1="${p.ax}" y1="${p.ay}" x2="${p.x}" y2="${p.y}" stroke="${COLORS.brassDim}" stroke-width="2" stroke-dasharray="3,3"/>`;
+    html += `<circle cx="${p.x}" cy="${p.y}" r="15" fill="${COLORS.ink800}" stroke="${COLORS.brass}" stroke-width="2"/>`;
+    if(p.type==='generico'){
+      html += `<text x="${p.x}" y="${p.y+4}" text-anchor="middle" font-family="'SF Mono','Cascadia Mono',Consolas,'Courier New',monospace" font-size="9" font-weight="700" fill="${COLORS.parchment}">3:1</text>`;
+    } else {
+      html += `<g color="${COLORS.parchment}" transform="translate(${p.x-8},${p.y-13}) scale(0.5)">${resourceIcon(p.type)}</g>`;
+      html += `<text x="${p.x}" y="${p.y+11.5}" text-anchor="middle" font-family="'SF Mono','Cascadia Mono',Consolas,'Courier New',monospace" font-size="7" font-weight="700" fill="${COLORS.brassBright}">2:1</text>`;
+    }
+  });
+
+  // edges (roads + legal hits)
+  const legalEdges = isBotDecisionNow(state) ? [] : computeLegalEdges(state);
+  edges.forEach(e=>{
+    const a = vertices.find(v=>v.id===e.v1), b = vertices.find(v=>v.id===e.v2);
+    if(e.road){
+      const owner = state.players.find(p=>p.id===e.road);
+      html += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${owner.color}" stroke-width="7" stroke-linecap="round"/>`;
+      html += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${COLORS.ink900}" stroke-width="7" stroke-linecap="round" opacity="0" data-edge="${e.id}"/>`;
+    } else if(legalEdges.includes(e.id)){
+      html += `<line class="edge-legal" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" data-edge="${e.id}"/>`;
+      html += `<line class="edge-hit" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke-width="${edgeHitW}" data-edge="${e.id}"/>`;
+    }
+  });
+
+  // vertices (settlements + legal hits + city-upgrade targets)
+  const legalVerts = isBotDecisionNow(state) ? [] : computeLegalVerts(state);
+  const legalCityVerts = isBotDecisionNow(state) ? [] : computeLegalCityVerts(state);
+  vertices.forEach(v=>{
+    if(v.building){
+      const owner = state.players.find(p=>p.id===v.building.playerId);
+      const icon = v.building.type==='city' ? 'ic-city' : 'ic-settlement';
+      html += `<g color="${owner.color}" transform="translate(${v.x-9},${v.y-11}) scale(0.62)"><use href="#${icon}"/></g>`;
+      if(legalCityVerts.includes(v.id)){
+        html += `<circle class="vertex-legal" cx="${v.x}" cy="${v.y}" r="13" data-vertex="${v.id}" fill="none" stroke="${COLORS.brassBright}" stroke-width="2.5"/>`;
+        html += `<circle class="vertex-hit vertex-hitarea" cx="${v.x}" cy="${v.y}" r="${vertexHitR}" data-vertex="${v.id}"/>`;
+      }
+    } else if(legalVerts.includes(v.id)){
+      html += `<circle class="vertex-legal" cx="${v.x}" cy="${v.y}" r="9" data-vertex="${v.id}"/>`;
+      html += `<circle class="vertex-hit vertex-hitarea" cx="${v.x}" cy="${v.y}" r="${vertexHitR}" data-vertex="${v.id}"/>`;
+    }
+  });
+
+  svg.innerHTML = html;
+
+  // wire events
+  svg.querySelectorAll('[data-vertex]').forEach(el=>{
+    el.addEventListener('click', ()=> onVertexClick(el.getAttribute('data-vertex')));
+  });
+  svg.querySelectorAll('[data-edge]').forEach(el=>{
+    el.addEventListener('click', ()=> onEdgeClick(el.getAttribute('data-edge')));
+  });
+  svg.querySelectorAll('[data-hex]').forEach(el=>{
+    el.addEventListener('click', ()=> onHexClick(el.getAttribute('data-hex')));
+  });
+}
+
+function renderPlayers(state){
+  const el = document.getElementById('players-list');
+  const revealAll = state.phase==='game-over';
+  el.innerHTML = state.players.map((p,i)=>{
+    const showBreakdown = revealAll || p.id===revealedPlayerId;
+    const resCells = showBreakdown
+      ? RESOURCES.map(r=>`<span class="res-cell">${p.resources[r]}</span>`).join('')
+      : `<span class="res-cell res-hidden" style="grid-column:span 5;" title="Solo il proprietario vede il dettaglio">${totalResources(p)} carte</span>`;
+    const devCount = p.devCards.filter(c=>!c.played).length;
+    const badges = (state.longestRoadPlayerId===p.id ? '<span class="badge badge-road" title="Strada Più Lunga">STRADA</span>' : '')
+      + (state.largestArmyPlayerId===p.id ? '<span class="badge badge-army" title="Esercito Più Grande">ESERCITO</span>' : '')
+      + (p.isBot ? `<span class="badge badge-bot" title="Bot">${BOT_LABELS[p.difficulty]||'BOT'}</span>` : '');
+    return `<div class="player-row ${i===state.currentPlayerIndex?'active':''}">
+      <span class="pident">
+        <span class="player-chip" style="background:${p.color}"></span>
+        <span class="pname">${escapeHtml(p.name)}</span>
+        ${badges}
+      </span>
+      ${resCells}
+      <span class="pvp">${p.victoryPoints}${devCount>0 ? `<span class="pdev">${devCount} carte</span>` : ''}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderLog(state){
+  const el = document.getElementById('log-list');
+  el.innerHTML = state.log.slice().reverse().map(entry=>
+    `<div class="log-entry ${entry.type}"><span class="tick">&raquo;</span>${escapeHtml(entry.text)}</div>`
+  ).join('');
+}
+
+const PHASE_LABELS = {
+  'setup': null, // computed specially below
+  'roll': 'Dadi',
+  'discard': 'Scarto',
+  'robber-move': 'Brigante',
+  'robber-steal': 'Furto',
+  'main': 'Azioni',
+  'game-over': 'Fine',
+};
+
+function fitTurnBanner(){
+  const banner = document.getElementById('turn-banner');
+  if(!banner || typeof banner.scrollWidth !== 'number') return;
+  banner.style.setProperty('--fit-scale', '1');
+  let scale = 1;
+  let guard = 0;
+  while(banner.scrollWidth > banner.clientWidth && scale > 0.55 && guard < 20){
+    scale = Math.round((scale - 0.05) * 100) / 100;
+    banner.style.setProperty('--fit-scale', String(scale));
+    guard++;
+  }
+}
+
+function renderTurnBanner(state){
+  const p = currentPlayer(state);
+  document.getElementById('turn-dot').style.background = p.color;
+  document.getElementById('turn-dot').style.color = p.color;
+  document.getElementById('turn-name').textContent = p.name;
+  const phaseLabel = state.phase==='setup'
+    ? `Setup ${state.setup.round}/2 · ${state.setup.awaitingRoad ? 'Strada' : 'Colonia'}`
+    : (PHASE_LABELS[state.phase] || '');
+  document.getElementById('phase-label').textContent = phaseLabel;
+  fitTurnBanner();
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function render(){
+  renderBoard(gameState);
+  renderPlayers(gameState);
+  renderLog(gameState);
+  renderTurnBanner(gameState);
+  renderActionPanel(gameState);
+  maybeShowPassScreen(gameState);
+  if(!document.getElementById('pass-overlay').classList.contains('active')){
+    maybeAutoShowHelp(gameState);
+  }
+  if(gameState.phase==='game-over') renderVictory(gameState);
+  updateTabBadge(gameState);
+  scheduleBotTick();
+}
+
+/* ---------------------------- Controller ---------------------------- */
+let gameState = null;
+let busy = false;
+let discardSelection = {};
+let yopPicks = [];
+
+async function onVertexClick(vertexId){
+  if(busy || !gameState) return;
+  busy = true;
+  try{
+    if(gameState.phase==='setup' && !gameState.setup.awaitingRoad){
+      if(!legalSettlementVertices(gameState).includes(vertexId)) return;
+      placeSetupSettlement(gameState, vertexId);
+      scheduleSave(gameState);
+    } else if(gameState.phase==='main' && gameState.buildMode==='settlement'){
+      const pid = currentPlayer(gameState).id;
+      if(!legalSettlementVerticesForBuild(gameState, pid).includes(vertexId)) return;
+      buildSettlement(gameState, vertexId);
+      gameState.buildMode = null;
+      scheduleSave(gameState);
+    } else if(gameState.phase==='main' && gameState.buildMode==='city'){
+      const pid = currentPlayer(gameState).id;
+      if(!legalCityVertices(gameState, pid).includes(vertexId)) return;
+      buildCity(gameState, vertexId);
+      gameState.buildMode = null;
+      scheduleSave(gameState);
+    }
+  } finally {
+    busy = false;
+    render();
+  }
+}
+
+async function onEdgeClick(edgeId){
+  if(busy || !gameState) return;
+  busy = true;
+  try{
+    if(gameState.phase==='setup' && gameState.setup.awaitingRoad){
+      if(!legalRoadEdges(gameState, gameState.setup.lastVertexId).includes(edgeId)) return;
+      placeSetupRoad(gameState, edgeId);
+      scheduleSave(gameState);
+    } else if(gameState.phase==='main' && gameState.pendingDevCard && gameState.pendingDevCard.type==='strade'){
+      const pid = currentPlayer(gameState).id;
+      if(!legalRoadEdgesForBuild(gameState, pid).includes(edgeId)) return;
+      buildRoad(gameState, edgeId, true);
+      gameState.pendingDevCard.roadsLeft--;
+      if(gameState.pendingDevCard.roadsLeft<=0) gameState.pendingDevCard = null;
+      scheduleSave(gameState);
+    } else if(gameState.phase==='main' && gameState.buildMode==='road'){
+      const pid = currentPlayer(gameState).id;
+      if(!legalRoadEdgesForBuild(gameState, pid).includes(edgeId)) return;
+      buildRoad(gameState, edgeId, false);
+      gameState.buildMode = null;
+      scheduleSave(gameState);
+    }
+  } finally {
+    busy = false;
+    render();
+  }
+}
+
+async function onHexClick(hexId){
+  if(busy || !gameState || gameState.phase!=='robber-move') return;
+  if(!computeLegalHexes(gameState).includes(hexId)) return;
+  busy = true;
+  try{
+    moveRobber(gameState, hexId);
+    scheduleSave(gameState);
+  } finally {
+    busy = false;
+    render();
+  }
+}
+
+function onRollDice(){
+  if(busy) return;
+  busy = true;
+  try{ rollDice(gameState); scheduleSave(gameState); }
+  finally { busy=false; render(); }
+}
+function onStealFrom(victimId){
+  if(busy) return;
+  busy = true;
+  try{ stealFrom(gameState, victimId); scheduleSave(gameState); }
+  finally { busy=false; render(); }
+}
+function onBuyDevCard(){
+  if(busy) return;
+  busy = true;
+  try{ buyDevCard(gameState); scheduleSave(gameState); }
+  finally { busy=false; render(); }
+}
+function onEndTurn(){
+  if(busy) return;
+  busy = true;
+  try{ endTurn(gameState); scheduleSave(gameState); }
+  finally { busy=false; render(); }
+}
+function onDiscardConfirm(){
+  if(busy) return;
+  busy = true;
+  try{
+    const pid = gameState.pendingDiscards[0];
+    applyDiscard(gameState, pid, {...discardSelection});
+    scheduleSave(gameState);
+  } finally { busy=false; render(); }
+}
+function onPlayDevCard(idx, type){
+  if(busy) return;
+  if(type==='cavaliere'){ busy=true; try{ playKnight(gameState, idx); scheduleSave(gameState); } finally{ busy=false; render(); } return; }
+  if(type==='strade'){ busy=true; try{ playRoadBuilding(gameState, idx); scheduleSave(gameState); } finally{ busy=false; render(); } return; }
+  if(type==='abbondanza'){ gameState.pendingDevCard = {type:'abbondanza', cardIndex:idx}; render(); return; }
+  if(type==='monopolio'){ gameState.pendingDevCard = {type:'monopolio', cardIndex:idx}; render(); return; }
+}
+function onYopConfirm(){
+  if(busy) return;
+  busy = true;
+  try{
+    const idx = gameState.pendingDevCard.cardIndex;
+    playYearOfPlenty(gameState, idx, yopPicks);
+    scheduleSave(gameState);
+  } finally { busy=false; render(); }
+}
+function onMonoConfirm(resource){
+  if(busy) return;
+  busy = true;
+  try{
+    const idx = gameState.pendingDevCard.cardIndex;
+    playMonopoly(gameState, idx, resource);
+    scheduleSave(gameState);
+  } finally { busy=false; render(); }
+}
+function onCancelTradeMode(){ gameState.tradeMode = null; render(); }
+function onProposeTrade(){
+  if(busy) return;
+  busy = true;
+  try{
+    const ok = proposeTrade(gameState, {...tradeOffer}, {...tradeRequest});
+    if(ok) gameState.tradeMode = null;
+    scheduleSave(gameState);
+  } finally { busy=false; render(); }
+}
+function onMaritimeTrade(give, receive){
+  if(busy) return;
+  busy = true;
+  try{
+    maritimeTrade(gameState, give, receive);
+    gameState.tradeMode = null;
+    scheduleSave(gameState);
+  } finally { busy=false; render(); }
+}
+function onRespondTrade(accept){
+  if(busy) return;
+  busy = true;
+  try{ respondTrade(gameState, accept); scheduleSave(gameState); }
+  finally { busy=false; render(); }
+}
+function onWithdrawTrade(){
+  if(busy) return;
+  busy = true;
+  try{ cancelPendingTrade(gameState); scheduleSave(gameState); }
+  finally { busy=false; render(); }
+}
+
+/* ---------------------------- Dice SVG ---------------------------- */
+const DIE_PIP_LAYOUTS = {
+  1:[[16,16]], 2:[[10,10],[22,22]], 3:[[10,10],[16,16],[22,22]],
+  4:[[10,10],[22,10],[10,22],[22,22]], 5:[[10,10],[22,10],[16,16],[10,22],[22,22]],
+  6:[[10,9],[22,9],[10,16],[22,16],[10,23],[22,23]],
+};
+function renderDieSvg(n){
+  const pips = (DIE_PIP_LAYOUTS[n]||[]).map(([x,y])=>`<circle cx="${x}" cy="${y}" r="2.6" fill="#1B2430"/>`).join('');
+  return `<svg class="die" viewBox="0 0 32 32"><rect x="2" y="2" width="28" height="28" rx="5" fill="#E8DCC0" stroke="#C9A227" stroke-width="2"/>${pips}</svg>`;
+}
+
+/* ---------------------------- Action panel ---------------------------- */
+function renderActionPanel(state){
+  const el = document.getElementById('action-panel');
+  if(!el) return;
+  const player = currentPlayer(state);
+
+  if(state.phase==='game-over'){ el.innerHTML=''; return; }
+
+  if(isBotDecisionNow(state)){
+    el.innerHTML = `<p class="action-hint bot-thinking">${escapeHtml(botDecisionPlayerName(state))} sta giocando…</p>`;
+    return;
+  }
+
+  if(state.phase==='roll'){
+    const roll = state.lastRoll;
+    el.innerHTML = (roll ? `<div class="dice-row">${renderDieSvg(roll.d1)}${renderDieSvg(roll.d2)}<span class="roll-total">= ${roll.total}</span></div>` : '')
+      + `<button class="action-btn primary" id="act-roll"><svg width="14" height="14" viewBox="0 0 32 32" style="vertical-align:-2px"><use href="#ic-dice"/></svg> Lancia i dadi</button>`;
+    document.getElementById('act-roll').addEventListener('click', onRollDice);
+    return;
+  }
+
+  if(state.phase==='discard'){
+    const pid = state.pendingDiscards[0];
+    const p = state.players.find(x=>x.id===pid);
+    const need = discardAmount(p);
+    el.innerHTML = `<p class="action-hint"><strong>${escapeHtml(p.name)}</strong> deve scartare ${need} cart${need===1?'a':'e'} (ne ha ${totalResources(p)}).</p>
+      <div id="discard-steppers"></div>
+      <button class="action-btn primary" id="act-discard-confirm" disabled>Conferma scarto</button>`;
+    renderDiscardSteppers(p, need);
+    document.getElementById('act-discard-confirm').addEventListener('click', onDiscardConfirm);
+    return;
+  }
+
+  if(state.phase==='robber-move'){
+    el.innerHTML = `<p class="action-hint">Clicca una tessera sul tabellone per spostarci il brigante.</p>`;
+    return;
+  }
+
+  if(state.phase==='robber-steal'){
+    const candidates = robberVictimCandidates(state, state.board.robberHexId);
+    el.innerHTML = `<p class="action-hint">Scegli a chi rubare una carta:</p><div class="picker-row" id="steal-candidates"></div>`;
+    const row = document.getElementById('steal-candidates');
+    candidates.forEach(pid=>{
+      const p = state.players.find(x=>x.id===pid);
+      const btn = document.createElement('button');
+      btn.className = 'picker-btn';
+      btn.textContent = `${p.name} (${totalResources(p)})`;
+      btn.style.borderColor = p.color;
+      btn.addEventListener('click', ()=> onStealFrom(pid));
+      row.appendChild(btn);
+    });
+    return;
+  }
+
+  if(state.phase==='main'){ renderMainActionPanel(state, el, player); return; }
+
+  el.innerHTML = '';
+}
+
+function renderMainActionPanel(state, el, player){
+  if(state.pendingTrade){
+    renderTradeRespondUI(state, el);
+    return;
+  }
+
+  if(state.pendingDevCard){
+    const pdc = state.pendingDevCard;
+    if(pdc.type==='strade'){
+      el.innerHTML = `<p class="action-hint">Costruzione di Strade: piazza ${pdc.roadsLeft} strad${pdc.roadsLeft===1?'a':'e'} gratuit${pdc.roadsLeft===1?'a':'e'} sul tabellone.</p>`;
+      return;
+    }
+    if(pdc.type==='abbondanza'){
+      el.innerHTML = `<p class="action-hint">Anno dell'Abbondanza: scegli 2 risorse (anche uguali).</p>
+        <div class="picker-row" id="yop-picks"></div>
+        <p class="action-hint" id="yop-selected">Selezionate: 0/2</p>
+        <button class="action-btn primary" id="act-yop-confirm" disabled>Conferma</button>`;
+      wireYearOfPlentyPicker();
+      document.getElementById('act-yop-confirm').addEventListener('click', onYopConfirm);
+      return;
+    }
+    if(pdc.type==='monopolio'){
+      el.innerHTML = `<p class="action-hint">Monopolio: scegli una risorsa da requisire a tutti gli avversari.</p>
+        <div class="picker-row" id="mono-picks"></div>`;
+      wireMonopolyPicker();
+      return;
+    }
+  }
+
+  if(state.buildMode){
+    const labels = {road:'una strada', settlement:'un insediamento', city:'una città (su una tua colonia)'};
+    el.innerHTML = `<p class="action-hint">Clicca sul tabellone dove costruire ${labels[state.buildMode]}.</p>
+      <button class="action-btn" id="act-cancel-build">Annulla</button>`;
+    document.getElementById('act-cancel-build').addEventListener('click', ()=>{ gameState.buildMode=null; render(); });
+    return;
+  }
+
+  if(state.tradeMode==='player'){ renderTradePlayerUI(state, el, player); return; }
+  if(state.tradeMode==='bank'){ renderTradeBankUI(state, el, player); return; }
+
+  const canRoad = canAfford(player, COSTS.road) && legalRoadEdgesForBuild(state, player.id).length>0;
+  const canSettle = canAfford(player, COSTS.settlement) && legalSettlementVerticesForBuild(state, player.id).length>0;
+  const canCity = canAfford(player, COSTS.city) && legalCityVertices(state, player.id).length>0;
+  const canDevCard = canAfford(player, COSTS.devcard) && state.devDeck.length>0;
+  const canMaritime = RESOURCES.some(r => player.resources[r] >= bestTradeRatio(state, player.id, r));
+  const canPlayerTrade = state.players.length>1;
+
+  let html = `
+    <button class="action-btn" id="act-trade-player" ${canPlayerTrade?'':'disabled'}>Scambia con giocatori</button>
+    <button class="action-btn" id="act-trade-bank" ${canMaritime?'':'disabled'}>Scambia con la banca</button>
+    <button class="action-btn" id="act-build-road" ${canRoad?'':'disabled'}>Strada <span class="cost">${costIcons(COSTS.road)}</span></button>
+    <button class="action-btn" id="act-build-settlement" ${canSettle?'':'disabled'}>Colonia <span class="cost">${costIcons(COSTS.settlement)}</span></button>
+    <button class="action-btn" id="act-build-city" ${canCity?'':'disabled'}>Città <span class="cost">${costIcons(COSTS.city)}</span></button>
+    <button class="action-btn" id="act-buy-dev" ${canDevCard?'':'disabled'}>Carta Sviluppo <span class="cost">${costIcons(COSTS.devcard)}</span></button>`;
+
+  const ownPlayable = player.devCards.some(c=>!c.played && c.type!=='vittoria');
+  if(ownPlayable){
+    html += `<div class="dev-hand">`;
+    player.devCards.forEach((c,idx)=>{
+      if(c.played || c.type==='vittoria') return;
+      const isPlayable = c.boughtTurn < state.turnNumber;
+      html += `<div class="dev-card-row"><span class="dname">${DEV_LABELS[c.type]}</span>${isPlayable ? `<button data-idx="${idx}" data-type="${c.type}" class="dev-play-btn">Gioca</button>` : '<span class="dnew">appena comprata</span>'}</div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `<button class="btn-end-turn" id="act-end-turn">Fine turno</button>`;
+  el.innerHTML = html;
+
+  document.getElementById('act-trade-player').addEventListener('click', ()=>{ gameState.tradeMode='player'; render(); });
+  document.getElementById('act-trade-bank').addEventListener('click', ()=>{ gameState.tradeMode='bank'; render(); });
+  document.getElementById('act-build-road').addEventListener('click', ()=>{ gameState.buildMode='road'; render(); });
+  document.getElementById('act-build-settlement').addEventListener('click', ()=>{ gameState.buildMode='settlement'; render(); });
+  document.getElementById('act-build-city').addEventListener('click', ()=>{ gameState.buildMode='city'; render(); });
+  document.getElementById('act-buy-dev').addEventListener('click', onBuyDevCard);
+  document.getElementById('act-end-turn').addEventListener('click', onEndTurn);
+  el.querySelectorAll('.dev-play-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> onPlayDevCard(parseInt(btn.dataset.idx,10), btn.dataset.type));
+  });
+}
+
+function renderDiscardSteppers(player, need){
+  discardSelection = {};
+  RESOURCES.forEach(r=> discardSelection[r]=0);
+  updateDiscardUI(player, need);
+}
+function updateDiscardUI(player, need){
+  const container = document.getElementById('discard-steppers');
+  container.innerHTML = RESOURCES.filter(r=>player.resources[r]>0).map(r=>`
+    <div class="stepper-row">
+      <span class="rlabel">${resourceIcon(r)} ${RESOURCE_LABELS[r]} <span style="color:var(--parchment-dim)">/${player.resources[r]}</span></span>
+      <button data-res="${r}" data-dir="-1">−</button>
+      <span class="sval">${discardSelection[r]}</span>
+      <button data-res="${r}" data-dir="1">+</button>
+    </div>`).join('');
+  container.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const r = btn.getAttribute('data-res'), dir = parseInt(btn.getAttribute('data-dir'),10);
+      const next = discardSelection[r] + dir;
+      if(next<0 || next>player.resources[r]) return;
+      const totalSelected = Object.values(discardSelection).reduce((a,b)=>a+b,0) - discardSelection[r] + next;
+      if(totalSelected>need) return;
+      discardSelection[r] = next;
+      updateDiscardUI(player, need);
+      const confirmBtn = document.getElementById('act-discard-confirm');
+      if(confirmBtn) confirmBtn.disabled = (Object.values(discardSelection).reduce((a,b)=>a+b,0) !== need);
+    });
+  });
+}
+
+function wireYearOfPlentyPicker(){
+  yopPicks = [];
+  const row = document.getElementById('yop-picks');
+  row.innerHTML = RESOURCES.map(r=>`<button class="picker-btn" data-res="${r}">${resourceIcon(r)} ${RESOURCE_LABELS[r]}</button>`).join('');
+  row.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(yopPicks.length>=2) return;
+      yopPicks.push(btn.getAttribute('data-res'));
+      document.getElementById('yop-selected').textContent = `Selezionate: ${yopPicks.length}/2` + (yopPicks.length? ' ('+yopPicks.map(r=>RESOURCE_LABELS[r]).join(', ')+')' : '');
+      const confirmBtn = document.getElementById('act-yop-confirm');
+      if(confirmBtn) confirmBtn.disabled = yopPicks.length!==2;
+    });
+  });
+}
+function wireMonopolyPicker(){
+  const row = document.getElementById('mono-picks');
+  row.innerHTML = RESOURCES.map(r=>`<button class="picker-btn" data-res="${r}">${resourceIcon(r)} ${RESOURCE_LABELS[r]}</button>`).join('');
+  row.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=> onMonoConfirm(btn.getAttribute('data-res')));
+  });
+}
+
+/* ---------------------------- Trade UI ---------------------------- */
+let tradeOffer = {}, tradeRequest = {};
+function renderTradePlayerUI(state, el, player){
+  tradeOffer = {}; tradeRequest = {};
+  RESOURCES.forEach(r=>{ tradeOffer[r]=0; tradeRequest[r]=0; });
+  el.innerHTML = `
+    <p class="action-hint">Offri:</p>
+    <div id="trade-offer-steppers"></div>
+    <p class="action-hint">Chiedi:</p>
+    <div id="trade-request-steppers"></div>
+    <button class="action-btn primary" id="act-propose-trade" disabled>Proponi</button>
+    <button class="action-btn" id="act-cancel-trade">Annulla</button>`;
+  updateTradeStepperUI(player);
+  document.getElementById('act-cancel-trade').addEventListener('click', onCancelTradeMode);
+  document.getElementById('act-propose-trade').addEventListener('click', onProposeTrade);
+}
+function updateTradeStepperUI(player){
+  const offerEl = document.getElementById('trade-offer-steppers');
+  offerEl.innerHTML = RESOURCES.map(r=>`
+    <div class="stepper-row">
+      <span class="rlabel">${resourceIcon(r)} ${RESOURCE_LABELS[r]} <span style="color:var(--parchment-dim)">/${player.resources[r]}</span></span>
+      <button data-res="${r}" data-dir="-1" data-kind="offer">−</button>
+      <span class="sval">${tradeOffer[r]}</span>
+      <button data-res="${r}" data-dir="1" data-kind="offer">+</button>
+    </div>`).join('');
+  const reqEl = document.getElementById('trade-request-steppers');
+  reqEl.innerHTML = RESOURCES.map(r=>`
+    <div class="stepper-row">
+      <span class="rlabel">${resourceIcon(r)} ${RESOURCE_LABELS[r]}</span>
+      <button data-res="${r}" data-dir="-1" data-kind="request">−</button>
+      <span class="sval">${tradeRequest[r]}</span>
+      <button data-res="${r}" data-dir="1" data-kind="request">+</button>
+    </div>`).join('');
+  [...offerEl.querySelectorAll('button'), ...reqEl.querySelectorAll('button')].forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const r = btn.getAttribute('data-res'), dir = parseInt(btn.getAttribute('data-dir'),10), kind = btn.getAttribute('data-kind');
+      const target = kind==='offer' ? tradeOffer : tradeRequest;
+      const next = target[r] + dir;
+      if(next<0 || next>19) return;
+      if(kind==='offer' && next>player.resources[r]) return;
+      target[r] = next;
+      updateTradeStepperUI(player);
+      const totalOffer = Object.values(tradeOffer).reduce((a,b)=>a+b,0);
+      const totalRequest = Object.values(tradeRequest).reduce((a,b)=>a+b,0);
+      const btn2 = document.getElementById('act-propose-trade');
+      if(btn2) btn2.disabled = !(totalOffer>0 && totalRequest>0);
+    });
+  });
+}
+function renderTradeBankUI(state, el, player){
+  el.innerHTML = `
+    <p class="action-hint">1. Scegli cosa dai (al miglior rapporto disponibile):</p>
+    <div class="picker-row" id="bank-give"></div>
+    <div id="bank-receive-wrap"></div>
+    <button class="action-btn" id="act-cancel-trade" style="margin-top:6px;">Annulla</button>`;
+  const giveEl = document.getElementById('bank-give');
+  giveEl.innerHTML = RESOURCES.map(r=>{
+    const ratio = bestTradeRatio(state, player.id, r);
+    const can = player.resources[r] >= ratio;
+    return `<button class="picker-btn" data-res="${r}" ${can?'':'disabled'}>${resourceIcon(r)} ${RESOURCE_LABELS[r]} <span class="n">${ratio}:1</span></button>`;
+  }).join('');
+  giveEl.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const give = btn.getAttribute('data-res');
+      const wrap = document.getElementById('bank-receive-wrap');
+      wrap.innerHTML = `<p class="action-hint">2. Scegli cosa ricevi:</p><div class="picker-row" id="bank-receive"></div>`;
+      const recvEl = document.getElementById('bank-receive');
+      recvEl.innerHTML = RESOURCES.filter(r=>r!==give).map(r=>`<button class="picker-btn" data-res="${r}">${resourceIcon(r)} ${RESOURCE_LABELS[r]}</button>`).join('');
+      recvEl.querySelectorAll('button').forEach(b2=>{
+        b2.addEventListener('click', ()=> onMaritimeTrade(give, b2.getAttribute('data-res')));
+      });
+    });
+  });
+  document.getElementById('act-cancel-trade').addEventListener('click', onCancelTradeMode);
+}
+function renderTradeRespondUI(state, el){
+  const trade = state.pendingTrade;
+  const from = state.players.find(p=>p.id===trade.fromId);
+  const target = state.players.find(p=>p.id===trade.targetIds[trade.askIndex]);
+  const offerStr = Object.entries(trade.offer).filter(([,n])=>n>0).map(([r,n])=>`${n} ${RESOURCE_LABELS[r]}`).join(', ') || 'niente';
+  const reqStr = Object.entries(trade.request).filter(([,n])=>n>0).map(([r,n])=>`${n} ${RESOURCE_LABELS[r]}`).join(', ') || 'niente';
+  el.innerHTML = `
+    <p class="action-hint"><strong>${escapeHtml(from.name)}</strong> offre: ${offerStr}<br>e chiede a <strong>${escapeHtml(target.name)}</strong>: ${reqStr}</p>
+    <button class="action-btn primary" id="act-trade-accept">Accetta (${escapeHtml(target.name)})</button>
+    <button class="action-btn" id="act-trade-reject">Rifiuta</button>
+    <button class="action-btn" id="act-trade-withdraw">Ritira proposta</button>`;
+  document.getElementById('act-trade-accept').addEventListener('click', ()=> onRespondTrade(true));
+  document.getElementById('act-trade-reject').addEventListener('click', ()=> onRespondTrade(false));
+  document.getElementById('act-trade-withdraw').addEventListener('click', onWithdrawTrade);
+}
+
+function renderVictory(state){
+  const overlay = document.getElementById('victory-overlay');
+  if(overlay.classList.contains('active')) return;
+  const winner = state.players.find(p=>p.id===state.winnerId);
+  document.getElementById('victory-title').textContent = `${winner.name} vince!`;
+  document.getElementById('victory-text').textContent = `${winner.victoryPoints} Punti Vittoria raggiunti.`;
+  overlay.classList.add('active');
+}
+
+/* ---------------------------- Device mode ---------------------------- */
+let appMode = null; // 'pc' | 'phone', null until chosen or loaded
+const APP_MODE_KEY = 'catan-app-mode';
+
+function applyAppMode(mode){
+  appMode = mode;
+  document.body.classList.remove('mode-pc','mode-phone');
+  document.body.classList.add('mode-'+mode);
+  const label = document.getElementById('current-mode-label');
+  if(label) label.textContent = mode==='phone' ? 'Smartphone' : 'PC';
+}
+async function loadAppMode(){
+  try{
+    const res = await window.storage.get(APP_MODE_KEY, false);
+    if(res && res.value && (res.value==='pc' || res.value==='phone')){ applyAppMode(res.value); return true; }
+  }catch(err){ /* best-effort: falls through to the picker screen */ }
+  return false;
+}
+async function saveAppMode(mode){
+  try{ await window.storage.set(APP_MODE_KEY, mode, false); }
+  catch(err){ /* best-effort — the choice still applies for this session either way */ }
+}
+function wireModeScreen(){
+  document.getElementById('pick-pc').addEventListener('click', ()=>{
+    applyAppMode('pc'); saveAppMode('pc'); showScreen('screen-start');
+  });
+  document.getElementById('pick-phone').addEventListener('click', ()=>{
+    applyAppMode('phone'); saveAppMode('phone'); showScreen('screen-start');
+  });
+  document.getElementById('btn-change-mode').addEventListener('click', ()=> showScreen('screen-mode'));
+}
+
+/* ---------------------------- Phone tabs (Tabellone / Giocatori / Registro) ----------------------------
+   Only meaningful in phone mode — in PC mode these classes have no CSS
+   effect and everything just stays visible via the grid layout. */
+let phoneTab = 'board';
+function setPhoneTab(tab){
+  phoneTab = tab;
+  document.body.classList.remove('ptab-board','ptab-players','ptab-log');
+  document.body.classList.add('ptab-'+tab);
+  document.querySelectorAll('.ptab-btn').forEach(btn=>{
+    const isActive = btn.getAttribute('data-ptab-select')===tab;
+    if(isActive) btn.classList.add('active'); else btn.classList.remove('active');
+  });
+  updateTabBadge(gameState);
+}
+function wirePhoneTabs(){
+  document.querySelectorAll('.ptab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> setPhoneTab(btn.getAttribute('data-ptab-select')));
+  });
+  setPhoneTab('board');
+}
+// Whether the board/action tab currently holds something only a human can
+// resolve — used to badge that tab when the person is looking at Giocatori
+// or Registro instead, since tabbing hides the action panel that used to
+// always be visible.
+function boardTabNeedsAttention(state){
+  if(!state || state.phase==='game-over' || isBotDecisionNow(state)) return false;
+  const actorId = currentActorId(state);
+  const actor = state.players.find(p=>p.id===actorId);
+  return !!actor && !actor.isBot && actorId===revealedPlayerId;
+}
+function updateTabBadge(state){
+  const badge = document.getElementById('ptab-badge-board');
+  if(!badge) return;
+  const needs = boardTabNeedsAttention(state) && phoneTab!=='board';
+  if(needs) badge.classList.add('show'); else badge.classList.remove('show');
+}
+
+/* ---------------------------- Help system ---------------------------- */
+let helpDismissedForever = new Set();
+let helpAutoShownThisSession = new Set();
+let currentlyShownHelpKey = null;
+const HELP_PREFS_KEY = 'catan-help-prefs';
+
+async function loadHelpPrefs(){
+  try{
+    const res = await window.storage.get(HELP_PREFS_KEY, false);
+    if(res && res.value) helpDismissedForever = new Set(JSON.parse(res.value));
+  }catch(err){ /* best-effort: modals just show again if this fails */ }
+}
+async function saveHelpPrefs(){
+  try{ await window.storage.set(HELP_PREFS_KEY, JSON.stringify([...helpDismissedForever]), false); }
+  catch(err){ /* best-effort, non-blocking */ }
+}
+function currentHelpKey(state){
+  if(!state) return null;
+  if(state.phase==='setup') return 'setup';
+  if(state.phase==='roll') return 'turn-roll';
+  if(state.phase==='discard' || state.phase==='robber-move' || state.phase==='robber-steal') return 'turn-robber';
+  if(state.phase==='main'){
+    if(state.tradeMode || state.pendingTrade) return 'turn-trade';
+    return 'turn-build';
+  }
+  return null;
+}
+function maybeAutoShowHelp(state){
+  const key = currentHelpKey(state);
+  if(!key || helpDismissedForever.has(key) || helpAutoShownThisSession.has(key)) return;
+  helpAutoShownThisSession.add(key);
+  showHelpModal(key);
+}
+function showHelpModal(key){
+  const content = HELP_CONTENT[key];
+  if(!content) return;
+  currentlyShownHelpKey = key;
+  document.getElementById('help-title').textContent = content.title;
+  document.getElementById('help-body').innerHTML = content.body;
+  document.getElementById('help-overlay').classList.add('active');
+}
+function wireHelpModal(){
+  document.getElementById('help-close').addEventListener('click', ()=>{
+    document.getElementById('help-overlay').classList.remove('active');
+  });
+  document.getElementById('help-dismiss-forever').addEventListener('click', ()=>{
+    if(currentlyShownHelpKey){ helpDismissedForever.add(currentlyShownHelpKey); saveHelpPrefs(); }
+    document.getElementById('help-overlay').classList.remove('active');
+  });
+  document.getElementById('btn-help').addEventListener('click', ()=>{
+    const key = currentHelpKey(gameState);
+    if(key) showHelpModal(key);
+  });
+  document.getElementById('victory-close').addEventListener('click', ()=>{
+    document.getElementById('victory-overlay').classList.remove('active');
+  });
+}
+
+/* ---------------------------- Manual export / import ----------------------------
+   Fallback that never touches window.storage at all — plain Blob download and
+   a file picker, using only standard browser APIs. If the platform's
+   persistent storage is misbehaving in a given session, this still works,
+   since it doesn't depend on that bridge in any way. */
+function showAlert(text){
+  const overlay = document.getElementById('modal-overlay');
+  const cancelBtn = document.getElementById('modal-cancel');
+  const confirmBtn = document.getElementById('modal-confirm');
+  document.getElementById('modal-text').textContent = text;
+  cancelBtn.style.display = 'none';
+  confirmBtn.textContent = 'OK';
+  overlay.classList.add('active');
+  const cleanup = () => {
+    overlay.classList.remove('active');
+    cancelBtn.style.display = '';
+    confirmBtn.textContent = 'Conferma';
+    confirmBtn.removeEventListener('click', onOk);
+  };
+  const onOk = () => cleanup();
+  confirmBtn.addEventListener('click', onOk);
+}
+
+function exportSave(){
+  if(!gameState){ showAlert('Nessuna partita in corso da esportare.'); return; }
+  const blob = new Blob([JSON.stringify(gameState, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'catan-salvataggio.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importSaveFile(file){
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const parsed = JSON.parse(reader.result);
+      if(!parsed || !parsed.board || !parsed.players) throw new Error('il file non contiene una partita valida');
+      gameState = migrateState(parsed);
+      revealedPlayerId = null;
+      hasSavedGame = true;
+      showScreen('screen-game');
+      render();
+      Storage.save(gameState); // best-effort re-sync; ok anche se fallisce
+    }catch(err){
+      showAlert('Impossibile caricare il file: ' + err.message);
+    }
+  };
+  reader.onerror = () => showAlert('Impossibile leggere il file selezionato.');
+  reader.readAsText(file);
+}
+
+function wireSaveTools(){
+  document.getElementById('btn-export').addEventListener('click', exportSave);
+  document.getElementById('btn-import').addEventListener('click', () => document.getElementById('file-import').click());
+  document.getElementById('file-import').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if(file) importSaveFile(file);
+    e.target.value = '';
+  });
+}
+
+/* ---------------------------- Screens / bootstrap ---------------------------- */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+let configPlayerCount = 4;
+let configBoardMode = 'casuale';
+let configPlayerTypes = ['umano','umano','umano','umano'];
+
+function renderPlayerConfigList(){
+  const el = document.getElementById('player-list');
+  let html = '';
+  for(let i=0;i<configPlayerCount;i++){
+    if(configPlayerTypes[i]===undefined) configPlayerTypes[i]='umano';
+    html += `<div class="player-config-row">
+      <span class="swatch" style="background:${PLAYER_COLORS[i]}" title="${PLAYER_COLOR_NAMES[i]}"></span>
+      <input type="text" id="pname-${i}" value="Giocatore ${i+1}" maxlength="16" />
+      <select id="ptype-${i}" class="type-select">
+        <option value="umano" ${configPlayerTypes[i]==='umano'?'selected':''}>Umano</option>
+        <option value="facile" ${configPlayerTypes[i]==='facile'?'selected':''}>Bot Facile</option>
+        <option value="medio" ${configPlayerTypes[i]==='medio'?'selected':''}>Bot Medio</option>
+        <option value="difficile" ${configPlayerTypes[i]==='difficile'?'selected':''}>Bot Difficile</option>
+      </select>
+    </div>`;
+  }
+  el.innerHTML = html;
+  const countEl = document.getElementById('player-count');
+  if(countEl) countEl.textContent = configPlayerCount;
+  for(let i=0;i<configPlayerCount;i++){
+    document.getElementById('ptype-'+i).addEventListener('change', (e)=>{
+      configPlayerTypes[i] = e.target.value;
+      const nameInput = document.getElementById('pname-'+i);
+      if(nameInput.value === `Giocatore ${i+1}` || /^Bot /.test(nameInput.value)){
+        nameInput.value = e.target.value==='umano' ? `Giocatore ${i+1}` : `Bot ${i+1}`;
+      }
+    });
+  }
+}
+
+let hasSavedGame = false;
+
+function showConfirm(text, onConfirm){
+  const overlay = document.getElementById('modal-overlay');
+  document.getElementById('modal-text').textContent = text;
+  overlay.classList.add('active');
+  const confirmBtn = document.getElementById('modal-confirm');
+  const cancelBtn = document.getElementById('modal-cancel');
+  const cleanup = ()=>{
+    overlay.classList.remove('active');
+    confirmBtn.removeEventListener('click', onYes);
+    cancelBtn.removeEventListener('click', onNo);
+  };
+  const onYes = ()=>{ cleanup(); onConfirm(); };
+  const onNo = ()=> cleanup();
+  confirmBtn.addEventListener('click', onYes);
+  cancelBtn.addEventListener('click', onNo);
+}
+
+function wireStartScreen(){
+  document.getElementById('btn-new-game').addEventListener('click', ()=>{
+    const proceed = ()=>{
+      configPlayerCount = 4; configBoardMode = 'casuale';
+      renderPlayerConfigList();
+      document.getElementById('mode-random').classList.add('selected');
+      document.getElementById('mode-fixed').classList.remove('selected');
+      showScreen('screen-config');
+    };
+    if(hasSavedGame){
+      showConfirm('Hai già una partita salvata. Iniziarne una nuova la sovrascriverà. Continuare?', proceed);
+    } else {
+      proceed();
+    }
+  });
+  document.getElementById('btn-resume-game').addEventListener('click', async ()=>{
+    const saved = await Storage.load();
+    if(saved){ gameState = migrateState(saved); revealedPlayerId = null; showScreen('screen-game'); render(); }
+  });
+}
+
+function wireConfigScreen(){
+  document.getElementById('btn-minus').addEventListener('click', ()=>{
+    if(configPlayerCount>2){ configPlayerCount--; renderPlayerConfigList(); }
+  });
+  document.getElementById('btn-plus').addEventListener('click', ()=>{
+    if(configPlayerCount<4){ configPlayerCount++; renderPlayerConfigList(); }
+  });
+  document.getElementById('mode-random').addEventListener('click', ()=>{
+    configBoardMode='casuale';
+    document.getElementById('mode-random').classList.add('selected');
+    document.getElementById('mode-fixed').classList.remove('selected');
+  });
+  document.getElementById('mode-fixed').addEventListener('click', ()=>{
+    configBoardMode='fisso';
+    document.getElementById('mode-fixed').classList.add('selected');
+    document.getElementById('mode-random').classList.remove('selected');
+  });
+
+  document.getElementById('btn-back-start').addEventListener('click', ()=> showScreen('screen-start'));
+
+  document.getElementById('btn-start-game').addEventListener('click', async ()=>{
+    const configs = [];
+    for(let i=0;i<configPlayerCount;i++){
+      const nameInput = document.getElementById('pname-'+i);
+      const type = configPlayerTypes[i] || 'umano';
+      configs.push({
+        name: (nameInput.value.trim() || `Giocatore ${i+1}`),
+        color: PLAYER_COLORS[i],
+        isBot: type!=='umano',
+        difficulty: type!=='umano' ? type : null,
+      });
+    }
+    gameState = createGame(configs, configBoardMode);
+    revealedPlayerId = null;
+    pushLog(gameState, 'Partita iniziata. Fase di Setup — ordine a serpente.', 'info');
+    showScreen('screen-game');
+    render();
+    setSaveStatus('pending');
+    const ok = await Storage.save(gameState);
+    hasSavedGame = ok || hasSavedGame;
+    setSaveStatus(ok ? 'saved' : 'error');
+  });
+}
+
+async function bootstrap(){
+  wireStartScreen();
+  wireConfigScreen();
+  wireSaveTools();
+  wireHelpModal();
+  wirePassScreen();
+  wireModeScreen();
+  wirePhoneTabs();
+  renderPlayerConfigList();
+  loadHelpPrefs();
+  const modeKnown = await loadAppMode();
+  if(modeKnown) showScreen('screen-start');
+  // else: screen-mode is already the active screen by default in the markup
+  const saved = await Storage.load();
+  if(saved){
+    hasSavedGame = true;
+    document.getElementById('btn-resume-game').style.display = 'block';
+  }
+}
+
+bootstrap();
+</script>
+</body>
+</html>
