@@ -1,9 +1,6 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-<link rel="manifest" href="/manifest.json" />
-<meta name="theme-color" content="#1B2430" />
-<link rel="apple-touch-icon" href="/icon-192.png" />
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>Catan Digitale</title>
@@ -327,6 +324,28 @@
   }
   .pass-hint{font-family:var(--font-body); font-size:.85rem; color:var(--parchment-dim); line-height:1.5; margin:10px 0 24px;}
 
+  /* ---------- dice roll popup ---------- */
+  .dice-popup-overlay{
+    position:fixed; inset:0; background:rgba(10,14,20,.5); display:none; align-items:center; justify-content:center;
+    flex-direction:column; z-index:120; pointer-events:none;
+  }
+  .dice-popup-overlay.active{display:flex;}
+  .dice-popup-dice{display:flex; gap:22px;}
+  .dice-popup-dice svg{width:78px; height:78px; filter:drop-shadow(0 10px 22px rgba(0,0,0,.55));}
+  .dice-popup-dice svg.rolling{animation:dice-tumble .16s linear infinite;}
+  @keyframes dice-tumble{
+    0%{transform:rotate(0deg) scale(1);}
+    50%{transform:rotate(18deg) scale(1.06);}
+    100%{transform:rotate(-14deg) scale(1);}
+  }
+  .dice-popup-total{
+    margin-top:20px; font-family:var(--font-display); font-size:2.3rem; color:var(--brass-bright);
+    text-shadow:0 4px 16px rgba(0,0,0,.6); opacity:0; transition:opacity .25s ease;
+  }
+  .dice-popup-total.show{opacity:1;}
+  body.mode-phone .dice-popup-dice svg{width:64px; height:64px;}
+  body.mode-phone .dice-popup-total{font-size:1.9rem;}
+
   /* ---------- responsive (pre-mode screens: mode/start/config cards) ---------- */
   @media (max-width:520px){
     .card{padding:26px 22px;}
@@ -574,6 +593,11 @@
       <p class="pass-hint">Le tue carte sono visibili solo a te. Passa il dispositivo, poi tocca per continuare.</p>
       <button class="btn primary" id="pass-confirm">Sono io — continua</button>
     </div>
+  </div>
+
+  <div class="dice-popup-overlay" id="dice-popup-overlay">
+    <div class="dice-popup-dice" id="dice-popup-dice"></div>
+    <div class="dice-popup-total" id="dice-popup-total"></div>
   </div>
 
 </div>
@@ -1003,13 +1027,12 @@ function placeSetupRoad(state, edgeId){
 
   if(state.setup.round===2){
     const v = findVertex(state, state.setup.lastVertexId);
-    const gained = {};
+    let gainedCount = 0;
     v.hexIds.forEach(hid=>{
       const hex = state.board.hexes.find(h=>h.id===hid);
-      if(hex.resource!=='deserto'){ player.resources[hex.resource]++; gained[hex.resource]=(gained[hex.resource]||0)+1; }
+      if(hex.resource!=='deserto'){ player.resources[hex.resource]++; gainedCount++; }
     });
-    const summary = Object.entries(gained).map(([r,n])=>`${n} ${RESOURCE_LABELS[r]}`).join(', ');
-    if(summary) pushLog(state, `${player.name} riceve: ${summary}.`, 'resource');
+    if(gainedCount>0) pushLog(state, `${player.name} riceve ${gainedCount} ${cardWord(gainedCount)}.`, 'resource');
   }
 
   state.setup.awaitingRoad = false;
@@ -1021,6 +1044,7 @@ function placeSetupRoad(state, edgeId){
 function totalResources(player){
   return Object.values(player.resources).reduce((a,b)=>a+b,0);
 }
+function cardWord(n){ return n===1 ? 'carta' : 'carte'; }
 function canAfford(player, cost){
   return Object.entries(cost).every(([res,n]) => player.resources[res] >= n);
 }
@@ -1193,7 +1217,7 @@ function rollDice(state){
   }
 }
 function distributeResources(state, total){
-  const gained = {}; // playerId -> {res:n}
+  const gained = {}; // playerId -> total count (type not tracked in the log — see note below)
   state.board.hexes.forEach(hex=>{
     if(hex.number!==total) return;
     if(hex.id===state.board.robberHexId) return;
@@ -1202,14 +1226,15 @@ function distributeResources(state, total){
       const amount = v.building.type==='city' ? 2 : 1;
       const player = state.players.find(p=>p.id===v.building.playerId);
       player.resources[hex.resource] += amount;
-      gained[player.id] = gained[player.id] || {};
-      gained[player.id][hex.resource] = (gained[player.id][hex.resource]||0) + amount;
+      gained[player.id] = (gained[player.id]||0) + amount;
     });
   });
-  Object.entries(gained).forEach(([pid, resMap])=>{
+  // Card count is fine to announce (visible in physical play too), but the
+  // resource type isn't — that's exactly what the private hand is meant to
+  // protect, so the log only ever says how many, never which.
+  Object.entries(gained).forEach(([pid, n])=>{
     const player = state.players.find(p=>p.id===pid);
-    const summary = Object.entries(resMap).map(([r,n])=>`${n} ${RESOURCE_LABELS[r]}`).join(', ');
-    pushLog(state, `${player.name} riceve: ${summary}.`, 'resource');
+    pushLog(state, `${player.name} riceve ${n} ${cardWord(n)}.`, 'resource');
   });
 }
 
@@ -1221,8 +1246,8 @@ function discardAmount(player){ return Math.floor(totalResources(player)/2); }
 function applyDiscard(state, playerId, discardMap){
   const player = state.players.find(p=>p.id===playerId);
   Object.entries(discardMap).forEach(([res,n])=>{ player.resources[res] -= n; });
-  const summary = Object.entries(discardMap).filter(([,n])=>n>0).map(([r,n])=>`${n} ${RESOURCE_LABELS[r]}`).join(', ');
-  pushLog(state, `${player.name} scarta: ${summary}.`, 'resource');
+  const total = Object.values(discardMap).reduce((a,b)=>a+b,0);
+  pushLog(state, `${player.name} scarta ${total} ${cardWord(total)}.`, 'resource');
   state.pendingDiscards = state.pendingDiscards.filter(id=>id!==playerId);
   if(state.pendingDiscards.length===0) state.phase = 'robber-move';
 }
@@ -1293,8 +1318,7 @@ function playYearOfPlenty(state, cardIndex, picks){
   const player = currentPlayer(state);
   player.devCards[cardIndex].played = true;
   picks.forEach(r => player.resources[r]++);
-  const summary = picks.map(r=>RESOURCE_LABELS[r]).join(', ');
-  pushLog(state, `${player.name} gioca Anno dell'Abbondanza: prende ${summary}.`, 'info');
+  pushLog(state, `${player.name} gioca Anno dell'Abbondanza.`, 'info');
   state.pendingDevCard = null;
 }
 function playMonopoly(state, cardIndex, resource){
@@ -1346,7 +1370,7 @@ function maritimeTrade(state, giveResource, receiveResource){
   if(player.resources[giveResource] < ratio) return false;
   player.resources[giveResource] -= ratio;
   player.resources[receiveResource] += 1;
-  pushLog(state, `${player.name} scambia ${ratio} ${RESOURCE_LABELS[giveResource]} per 1 ${RESOURCE_LABELS[receiveResource]} (porto).`, 'info');
+  pushLog(state, `${player.name} commercia con la banca (${ratio}:1).`, 'info');
   return true;
 }
 
@@ -1620,7 +1644,9 @@ function runBotTick(){
   }
   if(gameState.phase==='roll'){
     rollDice(gameState);
-    scheduleSave(gameState); render(); return;
+    scheduleSave(gameState); render();
+    if(gameState.lastRoll) showDicePopup(gameState.lastRoll.d1, gameState.lastRoll.d2, gameState.lastRoll.total);
+    return;
   }
   if(gameState.phase==='robber-move'){
     moveRobber(gameState, botChooseRobberHex(gameState, active.difficulty));
@@ -1883,17 +1909,27 @@ const PHASE_LABELS = {
   'game-over': 'Fine',
 };
 
+let lastBannerFitKey = '';
 function fitTurnBanner(){
   const banner = document.getElementById('turn-banner');
   if(!banner || typeof banner.scrollWidth !== 'number') return;
+  const nameEl = document.getElementById('turn-name');
+  const phaseEl = document.getElementById('phase-label');
+  const nameTxt = nameEl ? nameEl.textContent : '';
+  const phaseTxt = phaseEl ? phaseEl.textContent : '';
+  const cw = banner.clientWidth;
+  const key = nameTxt+'|'+phaseTxt+'|'+cw;
+  if(key === lastBannerFitKey) return; // nothing that could change the fit has changed
+  lastBannerFitKey = key;
   banner.style.setProperty('--fit-scale', '1');
-  let scale = 1;
-  let guard = 0;
-  while(banner.scrollWidth > banner.clientWidth && scale > 0.55 && guard < 20){
-    scale = Math.round((scale - 0.05) * 100) / 100;
-    banner.style.setProperty('--fit-scale', String(scale));
-    guard++;
-  }
+  const sw = banner.scrollWidth;
+  if(cw<=0 || sw<=cw) return; // already fits (or can't measure yet)
+  // one-shot estimate rather than an iterative shrink loop: each loop step
+  // forces a fresh layout pass, and doing that repeatedly on every render
+  // is exactly the kind of layout-thrashing that reads as "stopped
+  // responding" on a slower phone, so this settles in a single measurement.
+  const scale = Math.max(0.55, Math.floor((cw/sw)*20)/20);
+  banner.style.setProperty('--fit-scale', String(scale));
 }
 
 function renderTurnBanner(state){
@@ -2005,7 +2041,11 @@ function onRollDice(){
   if(busy) return;
   busy = true;
   try{ rollDice(gameState); scheduleSave(gameState); }
-  finally { busy=false; render(); }
+  finally {
+    busy=false;
+    render();
+    if(gameState.lastRoll) showDicePopup(gameState.lastRoll.d1, gameState.lastRoll.d2, gameState.lastRoll.total);
+  }
 }
 function onStealFrom(victimId){
   if(busy) return;
@@ -2097,9 +2137,45 @@ const DIE_PIP_LAYOUTS = {
   4:[[10,10],[22,10],[10,22],[22,22]], 5:[[10,10],[22,10],[16,16],[10,22],[22,22]],
   6:[[10,9],[22,9],[10,16],[22,16],[10,23],[22,23]],
 };
-function renderDieSvg(n){
+function renderDieSvg(n, rolling){
   const pips = (DIE_PIP_LAYOUTS[n]||[]).map(([x,y])=>`<circle cx="${x}" cy="${y}" r="2.6" fill="#1B2430"/>`).join('');
-  return `<svg class="die" viewBox="0 0 32 32"><rect x="2" y="2" width="28" height="28" rx="5" fill="#E8DCC0" stroke="#C9A227" stroke-width="2"/>${pips}</svg>`;
+  return `<svg class="die${rolling?' rolling':''}" viewBox="0 0 32 32"><rect x="2" y="2" width="28" height="28" rx="5" fill="#E8DCC0" stroke="#C9A227" stroke-width="2"/>${pips}</svg>`;
+}
+
+// Purely visual — the actual roll already happened in rollDice(); this just
+// gives it a moment of "tumbling" before settling on the real result, so a
+// dice roll reads as an event rather than a number quietly appearing in the
+// side panel. Never blocks input (pointer-events:none on the overlay) and
+// always clears itself, so a slow device or a rapid next action can't get
+// stuck behind it.
+let dicePopupTimer = null;
+function showDicePopup(d1, d2, total){
+  const overlay = document.getElementById('dice-popup-overlay');
+  const diceEl = document.getElementById('dice-popup-dice');
+  const totalEl = document.getElementById('dice-popup-total');
+  if(!overlay || !diceEl || !totalEl) return;
+  if(dicePopupTimer){ clearInterval(dicePopupTimer); dicePopupTimer = null; }
+  totalEl.classList.remove('show');
+  totalEl.textContent = '';
+  diceEl.innerHTML = renderDieSvg(d1, true) + renderDieSvg(d2, true);
+  overlay.classList.add('active');
+
+  let ticks = 0;
+  const maxTicks = 6;
+  dicePopupTimer = setInterval(()=>{
+    ticks++;
+    if(ticks>=maxTicks){
+      clearInterval(dicePopupTimer);
+      dicePopupTimer = null;
+      diceEl.innerHTML = renderDieSvg(d1,false) + renderDieSvg(d2,false);
+      totalEl.textContent = `${total}`;
+      totalEl.classList.add('show');
+      setTimeout(()=>{ overlay.classList.remove('active'); }, 1100);
+      return;
+    }
+    const r1 = 1+Math.floor(Math.random()*6), r2 = 1+Math.floor(Math.random()*6);
+    diceEl.innerHTML = renderDieSvg(r1, true) + renderDieSvg(r2, true);
+  }, 90);
 }
 
 /* ---------------------------- Action panel ---------------------------- */
@@ -2731,13 +2807,6 @@ async function bootstrap(){
 }
 
 bootstrap();
-</script>
-  <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js');
-    });
-  }
 </script>
 </body>
 </html>
